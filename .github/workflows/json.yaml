@@ -1,0 +1,13 @@
+name: Reusable JSON
+on:
+  workflow_call:
+jobs:
+  json:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current git repository
+        uses: actions/checkout@v3
+      - name: Lint JSON
+        uses: actionsx/prettier@v2
+        with:
+          args: --check "**/*.json"

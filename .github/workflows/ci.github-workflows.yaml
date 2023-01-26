@@ -1,0 +1,33 @@
+name: Github workflows
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/*.yaml"
+  pull_request:
+    paths:
+      - ".github/workflows/*.yaml"
+  workflow_dispatch:
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current git repository
+        uses: actions/checkout@v3
+      - name: Set up go environment
+        uses: actions/setup-go@v3
+      - name: Install actionlint
+        run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.6.23
+      - name: Run actionlint
+        run: /home/runner/go/bin/actionlint
+  yamllint:
+    uses: parcelLab/.github/.github/workflows/yaml.yaml@main
+  release:
+    if: github.ref == 'refs/heads/main'
+    needs:
+      - actionlint
+      - yamllint
+    uses: parcelLab/.github/.github/workflows/release.yaml@main
+    secrets:
+      repoAccessToken: ${{ secrets.REPO_ACCESS_TOKEN_OPEN_SOURCE }}

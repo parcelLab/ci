@@ -1,0 +1,63 @@
+name: Reusable JS
+on:
+  workflow_call:
+    inputs:
+      artifactPath:
+        required: false
+        description: Same format as actions/upload-artifact 'path' input. If provided, build the package and uploads the selected path as an artifact. Disabled by default.
+        default: ""
+        type: string
+      cacheEnabled:
+        required: false
+        description: Enable npm caching
+        default: false
+        type: boolean
+      nodeVersion:
+        required: false
+        description: The node version to provide (e.g. `lts/*`, `18`, `18.4`...)
+        default: latest
+        type: string
+    secrets:
+      npmGithubReadToken:
+        required: true
+        description: The Github token with permissions to read NPM private packages
+jobs:
+  js:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current git repository
+        uses: actions/checkout@v3
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ inputs.nodeVersion }}
+      - if: inputs.cacheEnabled
+        name: Cache dependencies
+        id: npm-cache
+        uses: actions/cache@v3
+        with:
+          path: ./node_modules
+          key: npm-modules-${{ hashFiles('package-lock.json') }}
+      - if: ${{ !inputs.cacheEnabled || steps.npm-cache.outputs.cache-hit != 'true' }}
+        name: Install npm dependencies
+        run: |
+          if [[ -r "$(dirname "$(npm root)")/package-lock.json" ]]; then
+            exec npm ci "$@"
+          else
+            exec npm i --no-package-lock "$@"
+          fi
+        env:
+          NPM_GITHUB_TOKEN: ${{ secrets.npmGithubReadToken }}
+      - name: Run lint
+        run: npm run lint
+      - name: Run test
+        run: npm test
+      - if: inputs.artifactPath != ''
+        name: Run build
+        run: npm build
+      - if: inputs.artifactPath != ''
+        name: Upload build artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ github.sha }}
+          path: ${{ inputs.artifactPath }}

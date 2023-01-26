@@ -1,0 +1,13 @@
+name: Reusable YAML
+on:
+  workflow_call:
+jobs:
+  yaml:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current git repository
+        uses: actions/checkout@v3
+      - name: Lint YAML
+        uses: actionsx/prettier@v2
+        with:
+          args: --check "**/*.{yaml,yml}"

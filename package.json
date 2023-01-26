@@ -1,0 +1,33 @@
+{
+  "name": "root",
+  "private": true,
+  "version": "0.0.0",
+  "description": "parcelLab's CI library",
+  "author": "engineering@parcellab.com",
+  "engines": {
+    "node": ">=v18.8.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/parcelLab/ci.git"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "17.4.2",
+    "@commitlint/config-conventional": "17.4.2",
+    "@types/is-ci": "^3.0.0",
+    "husky": "^8.0.3",
+    "is-ci": "^3.0.1",
+    "lint-staged": "^13.1.0",
+    "prettier": "2.8.3"
+  },
+  "lint-staged": {
+    "**/*": "prettier --write --ignore-unknown"
+  },
+  "scripts": {
+    "commitlint": "commitlint -x @commitlint/config-conventional --edit",
+    "format": "prettier --write --ignore-unknown .",
+    "format:staged": "lint-staged",
+    "lint": "prettier --check --ignore-unknown .",
+    "prepare": "test \"$NODE_ENV\" = production || is-ci || husky install"
+  }
+}

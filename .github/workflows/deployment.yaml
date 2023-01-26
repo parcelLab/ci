@@ -1,0 +1,101 @@
+name: Reusable Deployment
+on:
+  workflow_call:
+    inputs:
+      author:
+        required: true
+        description: The author of the change that triggers the deployment
+        type: string
+      description:
+        required: true
+        description: The description of the change (e.g. the commit title)
+        type: string
+      env:
+        required: true
+        description: The application environment. Can be test, staging or prod.
+        type: string
+      ref:
+        required: false
+        description: The github ref to deploy
+        default: main
+        type: string
+    secrets:
+      repoAccessToken:
+        required: true
+        description: The Github token to perform operations cross-repo (not secrets.GITHUB_TOKEN!)
+jobs:
+  deployment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current git repository
+        uses: actions/checkout@v3
+      - name: Load plconfig deployment values
+        id: deployment-yaml
+        uses: mikefarah/yq@v4.28.2
+        with:
+          cmd: yq -o json -I 0 '.deployment' plconfig.yaml
+      - name: Load deployment type
+        id: vars
+        run: |
+          # shellcheck disable=SC2086
+          echo "name=${{ fromJSON(steps.deployment-yaml.outputs.result).name }}" >> $GITHUB_OUTPUT
+          # shellcheck disable=SC2086
+          echo "type=${{ fromJSON(steps.deployment-yaml.outputs.result).type }}" >> $GITHUB_OUTPUT
+      # TODO - Cloudfront deployment
+      # TODO - Lambda deployment
+      # TODO - NPM deployment
+      # Kubernetes deployment
+      - if: steps.vars.outputs.deploymentType == 'k8s'
+        name: Load k8s deployment variables
+        id: k8s
+        run: |
+          # shellcheck disable=SC2129,SC2086
+          echo "namespace=${{ fromJSON(steps.deployment-yaml.outputs.result).namespace }}" >> $GITHUB_OUTPUT
+          # shellcheck disable=SC2086
+          echo "chart=${{ fromJSON(steps.deployment-yaml.outputs.result).chart }}" >> $GITHUB_OUTPUT
+          # shellcheck disable=SC2086
+          echo "containerContextPath=${{ fromJSON(steps.deployment-yaml.outputs.result).container.contextPath || '.' }}" >> $GITHUB_OUTPUT
+          # shellcheck disable=SC2086
+          echo "containerFile=${{ fromJSON(steps.deployment-yaml.outputs.result).container.file || 'Containerfile' }}" >> $GITHUB_OUTPUT
+          if [[ "${{ inputs.env }}" == 'prod' ]]
+          then
+            URL="${{ fromJSON(steps.deployment-yaml.outputs.result).urls.prod[0] }}"
+            STATUS_URL="${{ fromJSON(steps.deployment-yaml.outputs.result).status_url.prod }}"
+          elif [[ "${{ inputs.env }}" == 'staging' ]]
+          then
+            URL="${{ fromJSON(steps.deployment-yaml.outputs.result).urls.staging[0] }}"
+            STATUS_URL="${{ fromJSON(steps.deployment-yaml.outputs.result).status_url.staging }}"
+          else
+            URL="${{ fromJSON(steps.deployment-yaml.outputs.result).urls.test[0] }}"
+            STATUS_URL="${{ fromJSON(steps.deployment-yaml.outputs.result).status_url.test }}"
+          fi
+          # shellcheck disable=SC2086
+          echo "url=$URL" >> $GITHUB_OUTPUT
+          # shellcheck disable=SC2086
+          echo "status-url=$STATUS_URL" >> $GITHUB_OUTPUT
+      - if: steps.vars.outputs.deploymentType == 'k8s'
+        name: Create Github ${{ steps.vars.outputs.name }} k8s deployment
+        uses: chrnorm/deployment-action@v2
+        with:
+          auto-merge: false
+          environment: ${{ inputs.env }}
+          ref: ${{ inputs.ref }}
+          required-contexts: ""
+          payload: |
+            {
+              "author": ${{ toJSON(inputs.author) }},
+              "chart": ${{ toJSON(steps.k8s.outputs.chart) }},
+              "container": {
+                "context": ${{ toJSON(steps.vars.outputs.containerContextPath) }},
+                "file": ${{ toJSON(steps.vars.outputs.containerFile) }}
+              },
+              "description": ${{ toJSON(inputs.description) }},
+              "env": ${{ toJSON(inputs.env) }},
+              "name": ${{ toJSON(steps.vars.outputs.name) }},
+              "namespace": ${{ toJSON(steps.k8s.outputs.namespace) }},
+              "statusUrl": ${{ toJSON(steps.k8s.outputs.status-url) }},
+              "url": ${{ toJSON(steps.k8s.outputs.url) }}
+            }
+          production-environment: "${{ inputs.env == 'prod' }}"
+          transient-environment: "${{ inputs.env == 'test' }}"
+          token: ${{ secrets.repoAccessToken }}

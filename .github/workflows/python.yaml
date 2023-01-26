@@ -1,0 +1,24 @@
+name: Reusable Python
+on:
+  workflow_call:
+    inputs:
+      pythonVersion:
+        required: false
+        description: The python version to provide (e.g. `3.x`)
+        default: 3.x
+        type: string
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current git repository
+        uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ inputs.pythonVersion }}
+      - name: Install requirements
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-tests.txt
+      - name: Run unit tests
+        run: make test

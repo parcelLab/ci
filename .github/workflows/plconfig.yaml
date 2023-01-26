@@ -1,0 +1,89 @@
+name: Reusable parcelLab Config
+on:
+  workflow_call:
+    inputs:
+      botEmail:
+        required: false
+        description: The email of the bot that will appear in the GitOps commit
+        default: dev.bot@parcellab.com
+        type: string
+      botName:
+        required: false
+        description: The name of the bot that will appear in the GitOps commit
+        default: parcellab-dev-bot
+        type: string
+      deploymentRepoPath:
+        required: false
+        description: The path within the deployment repository that holds all version files
+        default: namespaces
+        type: string
+      deploymentRepoURL:
+        required: false
+        description: The repository within Github that holds the version file to deploy via GitOps
+        default: parcelLab/deployment
+        type: string
+    secrets:
+      repoAccessToken:
+        required: true
+        description: The Github token to perform operations cross-repo (not secrets.GITHUB_TOKEN!)
+jobs:
+  plconfig:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current git repository
+        uses: actions/checkout@v3
+      # Load plconfig.yaml global deployment settings
+      - name: Load name
+        id: name
+        uses: mikefarah/yq@v4.28.2
+        with:
+          cmd: yq ".deployment.name" plconfig.yaml
+      - name: Load namespace
+        id: namespace
+        uses: mikefarah/yq@v4.28.2
+        with:
+          cmd: yq ".deployment.namespace" plconfig.yaml
+      - name: Load chart
+        id: chart
+        uses: mikefarah/yq@v4.28.2
+        with:
+          cmd: yq ".deployment.chart" plconfig.yaml
+      - name: Checkout ${{ inputs.deploymentRepoURL }} git repository
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ inputs.deploymentRepoURL }}
+          path: remote
+          token: ${{ secrets.repoAccessToken }}
+          ref: main
+      - name: Load vars
+        id: vars
+        run: |
+          # shellcheck disable=SC2086
+          echo "namespace-path=remote/${{ inputs.deploymentRepoPath }}/${{ steps.namespace.outputs.result }}" >> $GITHUB_OUTPUT
+          # shellcheck disable=SC2086
+          echo "do-not-edit=DO NOT EDIT. Auto generated from ${{ steps.name.outputs.result }} plconfig.yaml (replaces values.yaml instead)" >> $GITHUB_OUTPUT
+      # Load plconfig values scoping to a subchart
+      - name: Load external values for all environments
+        uses: mikefarah/yq@v4.28.2
+        with:
+          cmd: >-
+            $(yq '.deployment.values | has("dev")' plconfig.yaml) == 'true' && yq '{ "${{ steps.chart.outputs.result }}": .deployment.values.dev } | . head_comment="${{ steps.vars.outputs.do-not-edit }}"' plconfig.yaml > ${{ steps.vars.outputs.namespace-path }}/dev/${{ steps.name.outputs.result }}/values-external.yaml ||
+            $(yq '.deployment.values | has("prod")' plconfig.yaml) == 'true' && yq '{ "${{ steps.chart.outputs.result }}": .deployment.values.prod } | . head_comment="${{ steps.vars.outputs.do-not-edit }}"' plconfig.yaml > ${{ steps.vars.outputs.namespace-path }}/prod/${{ steps.name.outputs.result }}/values-external.yaml ||
+            $(yq '.deployment.values | has("staging")' plconfig.yaml) == 'true' && yq '{ "${{ steps.chart.outputs.result }}": .deployment.values.staging } | . head_comment="${{ steps.vars.outputs.do-not-edit }}"' plconfig.yaml > ${{ steps.vars.outputs.namespace-path }}/staging/${{ steps.name.outputs.result }}/values-external.yaml ||
+            $(yq '.deployment.values | has("test")' plconfig.yaml) == 'true' && yq '{ "${{ steps.chart.outputs.result }}": .deployment.values.test } | . head_comment="${{ steps.vars.outputs.do-not-edit }}"' plconfig.yaml > ${{ steps.vars.outputs.namespace-path }}/test/${{ steps.name.outputs.result }}/values-external.yaml || true
+      # Commit & Push
+      - name: Commit deployment files
+        run: |
+          cd remote
+          git config --global user.email "${{ inputs.botEmail }}"
+          git config --global user.name "${{ inputs.botName }}"
+          git add .
+          git commit --allow-empty -m "chore(${{ steps.name.outputs.result }}): set parcelLab config values"
+      - name: Push changes to main in ${{ inputs.deploymentRepoURL }} git repository
+        uses: ad-m/github-push-action@4dcce6dea3e3c8187237fc86b7dfdc93e5aaae58
+        with:
+          repository: ${{ inputs.deploymentRepoURL }}
+          directory: remote
+          github_token: ${{ secrets.repoAccessToken }}
+          branch: main
+          force: true

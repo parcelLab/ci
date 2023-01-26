@@ -1,0 +1,192 @@
+name: Reusable Kubernetes
+on:
+  workflow_call:
+    inputs:
+      botEmail:
+        required: false
+        description: The email of the bot that will appear in the GitOps commit
+        default: dev.bot@parcellab.com
+        type: string
+      deploymentRepoPath:
+        required: false
+        description: The path within the deployment repository that holds all version files
+        default: namespaces
+        type: string
+      deploymentRepoURL:
+        required: false
+        description: The repository within Github that holds the version file to deploy via GitOps
+        default: parcelLab/deployment
+        type: string
+      registryHostname:
+        required: false
+        description: The hostname for the container registry
+        default: ghcr.io
+        type: string
+      registryOrg:
+        required: false
+        description: The registry organization
+        default: parcellab
+        type: string
+      registryUsername:
+        required: false
+        description: The username for the container registry
+        default: parcellab-dev-bot
+        type: string
+      slackChannelProd:
+        required: false
+        description: The Slack channel id to show production deployments
+        default: ""
+        type: string
+      slackChannelStaging:
+        required: false
+        description: The Slack channel id to show staging deployments
+        default: ""
+        type: string
+      slackChannelTest:
+        required: false
+        description: The Slack channel id to show test deployments
+        default: ""
+        type: string
+      versionFilePath:
+        required: false
+        description: The relative file path to the folder that holds the application Kubernetes values
+        default: values.yaml
+        type: string
+    secrets:
+      npmGithubReadToken:
+        required: true
+        description: The Github token with permissions to read NPM private packages
+      repoAccessToken:
+        required: true
+        description: The Github token to perform operations cross-repo (not github.token!)
+      slackBotToken:
+        required: false
+        description: The Slack bot token to write messages in the desired channels (required if slack channel ids are provided)
+jobs:
+  kubernetes:
+    environment: ${{ github.event.deployment.payload.env }}
+    concurrency: ${{ github.event.deployment.payload.env }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Load deployment variables
+        id: vars
+        run: |
+          REF="${{ github.event.deployment.ref }}"
+          SHA="${{ github.event.deployment.sha }}"
+          if [[ "${{ github.event.deployment.payload.env }}" == 'prod' ]]
+          then
+            # shellcheck disable=SC2086
+            echo "version=${REF##*/}" >> $GITHUB_OUTPUT
+            # shellcheck disable=SC2086
+            echo "channel-id=${{ inputs.slackChannelProd }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event.deployment.payload.env }}" == 'test' ]]
+          then
+            # shellcheck disable=SC2086
+            echo "version=${SHA:0:7}" >> $GITHUB_OUTPUT
+            # shellcheck disable=SC2086
+            echo "channel-id=${{ inputs.slackChannelTest }}" >> $GITHUB_OUTPUT
+          else
+            # shellcheck disable=SC2086
+            echo "version=${SHA:0:7}" >> $GITHUB_OUTPUT
+            # shellcheck disable=SC2086
+            echo "channel-id=${{ inputs.slackChannelStaging }}" >> $GITHUB_OUTPUT
+          fi
+      - name: Start ${{ github.event.deployment.payload.name }} deployment
+        uses: chrnorm/deployment-status@v2
+        with:
+          deployment-id: ${{ github.event.deployment.id }}
+          environment-url: ${{ github.event.deployment.payload.url }}
+          environment: ${{ github.event.deployment.payload.env }}
+          state: "in_progress"
+          token: ${{ github.token }}
+      - name: Checkout current git repository
+        uses: actions/checkout@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ inputs.registryHostname }}
+          username: ${{ inputs.registryUsername }}
+          password: ${{ secrets.repoAccessToken }}
+      - name: Build and push latest version
+        uses: docker/build-push-action@v3
+        with:
+          build-args: |
+            GITHUB_SHA=${{ github.sha }}
+            VERSION=${{ steps.vars.outputs.version }}
+            APP_NAME=${{ github.event.deployment.payload.name }}
+            ENVIRONMENT=${{ github.event.deployment.payload.env }}
+            NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
+          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
+          cache-to: type=inline
+          context: ${{ github.event.deployment.payload.container.context }}
+          file: ${{ github.event.deployment.payload.container.file }}
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:latest
+            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:${{ steps.vars.outputs.version }}
+            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:${{ github.sha }}
+      - name: Checkout ${{ inputs.deploymentRepoURL }} git repository
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ inputs.deploymentRepoURL }}
+          path: remote
+          token: ${{ secrets.repoAccessToken }}
+          ref: main
+      - name: Update ${{ github.event.deployment.payload.name }} version for ${{ github.event.deployment.environment }} values
+        uses: mikefarah/yq@v4.28.2
+        with:
+          cmd: yq '(.${{ github.event.deployment.payload.chart }}.image.tag = "${{ steps.vars.outputs.version }}")' -i remote/${{ inputs.deploymentRepoPath }}/${{ github.event.deployment.payload.namespace }}/${{ github.event.deployment.payload.env }}/${{ github.event.deployment.payload.name }}/${{ inputs.versionFilePath }}
+      - name: Commit deployment file
+        run: |
+          cd remote
+          git config --global user.email "${{ inputs.botEmail }}"
+          git config --global user.name "${{ inputs.registryUsername }}"
+          git add .
+          git commit --allow-empty -m "chore(${{ github.event.deployment.payload.name }}): set ${{ github.event.deployment.payload.env }} version to ${{ steps.vars.outputs.version }}"
+      - name: Push changes to ${{ inputs.deploymentRepoURL }} git repository
+        uses: ad-m/github-push-action@4dcce6dea3e3c8187237fc86b7dfdc93e5aaae58
+        with:
+          repository: ${{ inputs.deploymentRepoURL }}
+          directory: remote
+          github_token: ${{ secrets.repoAccessToken }}
+          branch: main
+          force: true
+      - if: success()
+        name: Successful ${{ github.event.deployment.payload.name }} deployment
+        uses: chrnorm/deployment-status@v2
+        with:
+          deployment-id: ${{ github.event.deployment.id }}
+          environment-url: ${{ github.event.deployment.payload.url }}
+          environment: ${{ github.event.deployment.payload.env }}
+          state: "success"
+          token: ${{ github.token }}
+      - if: failure()
+        name: Failed ${{ github.event.deployment.payload.name }} deployment
+        uses: chrnorm/deployment-status@v2
+        with:
+          deployment-id: ${{ github.event.deployment.id }}
+          environment-url: ${{ github.event.deployment.payload.url }}
+          environment: ${{ github.event.deployment.payload.env }}
+          state: "failure"
+          token: ${{ github.token }}
+      - if: success() && steps.vars.outputs.channel-id != ''
+        name: Notify ${{ github.event.deployment.payload.name }} deployment success
+        uses: darioblanco/slack-deployment@main
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.slackBotToken }}
+        with:
+          channel_id: ${{ steps.vars.outputs.channel-id }}
+          deployment_description: ${{ github.event.deployment.payload.description == null && 'No description' || github.event.deployment.payload.description }}
+          deployment_name: ${{ github.event.deployment.payload.name == null && 'unknown' || github.event.deployment.payload.name }}
+          environment: ${{ github.event.deployment.payload.env == null && 'unknown' || github.event.deployment.payload.env }}
+          owner: ${{ github.event.deployment.payload.author == null && inputs.registryUsername || github.event.deployment.payload.author }}
+          package: ${{ github.event.deployment.payload.name == null && 'unknown' || github.event.deployment.payload.name }}
+          ref: ${{ github.ref }}
+          repo: ${{ github.repository }}
+          sha: ${{ github.sha }}
+          status_url: ${{ github.event.deployment.payload.statusUrl == null && '' || github.event.deployment.payload.statusUrl }}
+          url: ${{ github.event.deployment.payload.url == null && '' || github.event.deployment.payload.url }}
+          version: ${{ steps.vars.outputs.version }}

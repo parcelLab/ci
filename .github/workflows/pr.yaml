@@ -1,0 +1,41 @@
+name: Reusable PR
+on:
+  workflow_call:
+    inputs:
+      labelerConfig:
+        required: false
+        description: The folder that holds the labeler configuration
+        default: .github/labeler.yaml
+        type: string
+    secrets:
+      repoAccessToken:
+        required: true
+        description: The Github token to perform operations cross-repo (can be secrets.GITHUB_TOKEN)
+jobs:
+  label:
+    permissions:
+      contents: read
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Label PR based on pushed file paths
+        continue-on-error: true
+        uses: actions/labeler@v4
+        with:
+          repo-token: ${{ secrets.repoAccessToken }}
+          configuration-path: ${{ inputs.labelerConfig }}
+          sync-labels: true
+  validate_title:
+    name: Validate PR title
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5.0.2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          requireScope: false
+          # When using "Squash and merge" on a PR with only one commit, GitHub
+          # will suggest using that commit message instead of the PR title for the
+          # merge commit, and it's easy to commit this by mistake. Enable this option
+          # to also validate the commit message for one commit PRs.
+          validateSingleCommit: false

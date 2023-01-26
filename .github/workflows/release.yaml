@@ -1,0 +1,45 @@
+name: Reusable Release
+on:
+  workflow_call:
+    inputs:
+      draft:
+        required: false
+        description: Defines if the release is a draft (not published directly). Defaults to true
+        default: true
+        type: boolean
+      prerelease:
+        required: false
+        description: Defines if the release to create is a prerelease. Defaults to false
+        default: false
+        type: boolean
+      targetBranch:
+        required: false
+        description: The target branch for the release being created
+        default: main
+        type: string
+      taskPrefix:
+        required: false
+        description: The prefix that identifies task ids in the commits
+        default: JIR-
+        type: string
+      templatePath:
+        required: false
+        description: The path within the .github/ folder for the release drafter configuration
+        default: release-wizard.md
+        type: string
+    secrets:
+      repoAccessToken:
+        required: true
+        description: The Github token to perform operations cross-repo (not secrets.GITHUB_TOKEN!)
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Github release
+        uses: darioblanco/release-wizard@v2.0.3
+        with:
+          draft: ${{ inputs.draft }}
+          prerelease: ${{ inputs.prerelease }}
+          taskPrefix: ${{ inputs.taskPrefix }}
+          token: ${{ secrets.repoAccessToken }}
+          templatePath: ${{ inputs.templatePath }}

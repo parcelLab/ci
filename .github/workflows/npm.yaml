@@ -1,0 +1,122 @@
+name: Reusable NPM Publish
+on:
+  workflow_call:
+    inputs:
+      access:
+        required: false
+        description: The package access ('restricted' or 'public')
+        default: restricted
+        type: string
+      botEmail:
+        required: false
+        description: The email of the bot that will appear in the GitOps commit
+        default: dev.bot@parcellab.com
+        type: string
+      botName:
+        required: false
+        description: The name of the bot that will appear in the GitOps commit
+        default: parcellab-dev-bot
+        type: string
+      cacheEnabled:
+        required: false
+        description: Enable npm caching
+        default: false
+        type: boolean
+      buildBeforePublish:
+        required: false
+        description: Build the package before publishing
+        default: false
+        type: boolean
+      defaultBranch:
+        required: false
+        description: The default branch
+        default: main
+        type: string
+      nodeVersion:
+        required: false
+        description: The node version to provide (e.g. `lts/*`, `18`, `18.4`...)
+        default: latest
+        type: string
+      scope:
+        required: false
+        description: The npm organization (defaults to @parcellab)
+        default: "@parcellab"
+        type: string
+      version:
+        required: true
+        description: The version to publish (without 'v')
+        type: string
+    secrets:
+      githubAuthToken:
+        required: false
+        description: The Github token with permissions to write NPM private packages to the desired scope
+      npmjsAuthToken:
+        required: false
+        description: The npm token with permissions to write NPM packages to the desired scope
+jobs:
+  npm-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current git repository
+        uses: actions/checkout@v3
+        with:
+          persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of REPO_ACCESS_TOKEN
+          fetch-depth: 0 # otherwise, there would be errors pushing refs to the destination repository
+      - name: Use Node.js with Github Packages as registry url
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ inputs.nodeVersion }}
+          registry-url: https://npm.pkg.github.com
+          scope: ${{ inputs.scope }}
+      - if: inputs.cacheEnabled
+        name: Cache dependencies
+        id: npm-cache
+        uses: actions/cache@v3
+        with:
+          path: ./node_modules
+          key: npm-modules-${{ hashFiles('package-lock.json') }}
+      - if: ${{ !inputs.cacheEnabled || steps.npm-cache.outputs.cache-hit != 'true' }}
+        name: Install npm dependencies
+        run: |
+          if [[ -r "$(dirname "$(npm root)")/package-lock.json" ]]; then
+            exec npm ci "$@"
+          else
+            exec npm i --no-package-lock "$@"
+          fi
+        env:
+          NPM_GITHUB_TOKEN: ${{ secrets.githubAuthToken }}
+      - if: inputs.buildBeforePublish
+        name: Run build
+        run: npm run build
+      - name: Update package.json version to ${{ inputs.version }}
+        uses: mikefarah/yq@v4.28.2
+        with:
+          cmd: |
+            yq e '.version = "${{ inputs.version }}"' -i package.json -j
+      - name: Commit new package.json version
+        run: |
+          git config --local user.email "${{ inputs.botEmail }}"
+          git config --local user.name "${{ inputs.botName }}"
+          git commit -m "chore: set version ${{ inputs.version }} [skip ci]" -a
+      - name: Push changes to current git repository
+        uses: ad-m/github-push-action@4dcce6dea3e3c8187237fc86b7dfdc93e5aaae58
+        with:
+          github_token: ${{ secrets.githubAuthToken }}
+          branch: ${{ inputs.defaultBranch }}
+      - name: Publish NPM package to Github
+        run: npm publish --access ${{ inputs.access }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.githubAuthToken }}
+          NPM_GITHUB_TOKEN: ${{ secrets.githubAuthToken }} # To support configurations from .npmrc
+      - if: inputs.access == 'public'
+        name: Use Node.js with NPMjs as registry url
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ inputs.nodeVersion }}
+          registry-url: https://registry.npmjs.org
+          scope: ${{ inputs.scope }}
+      - if: inputs.access == 'public'
+        name: Publish NPM package to NPMjs
+        run: npm publish --access ${{ inputs.access }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.npmjsAuthToken }}

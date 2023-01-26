@@ -1,0 +1,19 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:base", "schedule:nonOfficeHours"],
+  "assigneesFromCodeOwners": true,
+  "assigneesSampleSize": 1,
+  "branchPrefix": "chore/renovate/",
+  "commitBodyTable": true,
+  "commitMessageAction": "Pin",
+  "commitMessageTopic": "{{depName}}",
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 3,
+  "rangeStrategy": "bump",
+  "semanticCommits": "enabled",
+  "semanticCommitType": "chore",
+  "separateMinorPatch": true,
+  "vulnerabilityAlerts": {
+    "labels": ["security"]
+  }
+}
