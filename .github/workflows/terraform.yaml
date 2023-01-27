@@ -1,0 +1,41 @@
+name: Terraform
+on:
+  workflow_call:
+    inputs:
+      tfFolder:
+        required: false
+        description: The root folder that holds the terraform stack or stacks (as subfolders)
+        default: .
+        type: string
+      tflintConfigPath:
+        required: false
+        description: The path to the tflint configuration
+        default: .tflint.hcl
+        type: string
+    secrets:
+      tfApiToken:
+        required: false
+        description: The Terraform API Token (if using Terraform Cloud)
+jobs:
+  tf:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current git repository
+        uses: actions/checkout@v3
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          cli_config_credentials_token: ${{ secrets.tfApiToken }}
+      - name: Terraform Format
+        run: terraform fmt -recursive -check
+      - name: Cache plugin dir
+        uses: actions/cache@v2
+        with:
+          path: ~/.tflint.d/plugins
+          key: tflint-${{ hashFiles('.tflint.hcl') }}
+      - uses: terraform-linters/setup-tflint@v1
+        name: Setup TFLint
+      - name: Init TFLint
+        run: find ${{ inputs.tfFolder }} -type f -not -path "*/.terraform*" -name 'main.tf' -exec dirname {} \; -print0 | xargs -0 -I {} tflint -c ${{ inputs.tflintConfigPath }} --init {}
+      - name: Run TFLint for all Terraform modules
+        run: find ${{ inputs.tfFolder }} -type f -not -path "*/.terraform*" -name 'main.tf' -exec dirname {} \; -print0 | xargs -0 -I {} tflint -c ${{ inputs.tflintConfigPath }} {}
