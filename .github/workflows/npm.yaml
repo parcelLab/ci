@@ -99,7 +99,7 @@ jobs:
           git config --local user.name "${{ inputs.botName }}"
           git commit -m "chore: set version ${{ inputs.version }} [skip ci]" -a
       - name: Push changes to current git repository
-        uses: ad-m/github-push-action@4dcce6dea3e3c8187237fc86b7dfdc93e5aaae58
+        uses: ad-m/github-push-action@0fafdd62b84042d49ec0cb92d9cac7f7ce4ec79e
         with:
           github_token: ${{ secrets.githubAuthToken }}
           branch: ${{ inputs.defaultBranch }}

@@ -147,7 +147,7 @@ jobs:
           git add .
           git commit --allow-empty -m "chore(${{ github.event.deployment.payload.name }}): set ${{ github.event.deployment.payload.env }} version to ${{ steps.vars.outputs.version }}"
       - name: Push changes to ${{ inputs.deploymentRepoURL }} git repository
-        uses: ad-m/github-push-action@4dcce6dea3e3c8187237fc86b7dfdc93e5aaae58
+        uses: ad-m/github-push-action@0fafdd62b84042d49ec0cb92d9cac7f7ce4ec79e
         with:
           repository: ${{ inputs.deploymentRepoURL }}
           directory: remote
