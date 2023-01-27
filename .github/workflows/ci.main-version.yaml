@@ -5,4 +5,4 @@ on:
       - "v*"
 jobs:
   tag:
-    uses: parcelLab/ci/.github/workflows/main-version.yaml@v1
+    uses: parcelLab/ci/.github/workflows/main-version.yaml@main
