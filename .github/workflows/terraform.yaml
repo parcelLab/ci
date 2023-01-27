@@ -36,6 +36,10 @@ jobs:
       - uses: terraform-linters/setup-tflint@v1
         name: Setup TFLint
       - name: Init TFLint
-        run: find ${{ inputs.tfFolder }} -type f -not -path "*/.terraform*" -name 'main.tf' -exec dirname {} \; -print0 | xargs -0 -I {} tflint -c ${{ inputs.tflintConfigPath }} --init {}
+        run: |
+          # shellcheck disable=SC2038
+          find ${{ inputs.tfFolder }} -type f -not -path "*/.terraform*" -name 'main.tf' -exec dirname {} \; | xargs -I {} tflint -c ${{ inputs.tflintConfigPath }} --init {}
       - name: Run TFLint for all Terraform modules
-        run: find ${{ inputs.tfFolder }} -type f -not -path "*/.terraform*" -name 'main.tf' -exec dirname {} \; -print0 | xargs -0 -I {} tflint -c ${{ inputs.tflintConfigPath }} {}
+        run: |
+          # shellcheck disable=SC2038
+          find ${{ inputs.tfFolder }} -type f -not -path "*/.terraform*" -name 'main.tf' -exec dirname {} \; | xargs -I {} tflint -c ${{ inputs.tflintConfigPath }} {}
