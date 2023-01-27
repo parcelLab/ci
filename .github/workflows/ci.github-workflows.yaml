@@ -22,12 +22,12 @@ jobs:
       - name: Run actionlint
         run: /home/runner/go/bin/actionlint
   yamllint:
-    uses: parcelLab/.github/.github/workflows/yaml.yaml@main
+    uses: parcelLab/ci/.github/workflows/yaml.yaml@main
   release:
     if: github.ref == 'refs/heads/main'
     needs:
       - actionlint
       - yamllint
-    uses: parcelLab/.github/.github/workflows/release.yaml@main
+    uses: parcelLab/ci/.github/workflows/release.yaml@main
     secrets:
       repoAccessToken: ${{ secrets.REPO_ACCESS_TOKEN_OPEN_SOURCE }}
