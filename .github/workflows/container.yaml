@@ -7,6 +7,11 @@ on:
         description: The container context to build the image
         default: .
         type: string
+      extraBuildArgs:
+        required: false
+        description: Extra build arguments for building the docker image (KEY=VALUE separated by new lines)
+        default: ""
+        type: string
       filePath:
         required: false
         description: The file path for the Container image
@@ -63,6 +68,7 @@ jobs:
             GITHUB_SHA=${{ github.sha }}
             NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
             VERSION=${{ inputs.version }}
+            ${{ inputs.extraBuildArgs }}
           cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.name }}
           cache-to: type=inline
           context: ${{ inputs.contextPath }}
