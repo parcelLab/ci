@@ -86,8 +86,8 @@ jobs:
               "author": ${{ toJSON(inputs.author) }},
               "chart": ${{ toJSON(steps.k8s.outputs.chart) }},
               "container": {
-                "context": ${{ toJSON(steps.deployment-vars.outputs.containerContextPath) }},
-                "file": ${{ toJSON(steps.deployment-vars.outputs.containerFile) }}
+                "context": ${{ toJSON(steps.k8s.outputs.containerContextPath) }},
+                "file": ${{ toJSON(steps.k8s.outputs.containerFile) }}
               },
               "description": ${{ toJSON(inputs.description) }},
               "env": ${{ toJSON(inputs.env) }},
