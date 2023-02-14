@@ -110,7 +110,7 @@ jobs:
           username: ${{ inputs.registryUsername }}
           password: ${{ secrets.repoAccessToken }}
       - name: Build and push latest version
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           build-args: |
             GITHUB_SHA=${{ github.sha }}
@@ -136,7 +136,7 @@ jobs:
           token: ${{ secrets.repoAccessToken }}
           ref: main
       - name: Update ${{ github.event.deployment.payload.name }} version for ${{ github.event.deployment.environment }} values
-        uses: mikefarah/yq@v4.28.2
+        uses: mikefarah/yq@v4.30.8
         with:
           cmd: yq '(.${{ github.event.deployment.payload.chart }}.image.tag = "${{ steps.vars.outputs.version }}")' -i remote/${{ inputs.deploymentRepoPath }}/${{ github.event.deployment.payload.namespace }}/${{ github.event.deployment.payload.env }}/${{ github.event.deployment.payload.name }}/${{ inputs.versionFilePath }}
       - name: Commit deployment file

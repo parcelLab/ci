@@ -35,17 +35,17 @@ jobs:
       # Load plconfig.yaml global deployment settings
       - name: Load name
         id: name
-        uses: mikefarah/yq@v4.28.2
+        uses: mikefarah/yq@v4.30.8
         with:
           cmd: yq ".deployment.name" plconfig.yaml
       - name: Load namespace
         id: namespace
-        uses: mikefarah/yq@v4.28.2
+        uses: mikefarah/yq@v4.30.8
         with:
           cmd: yq ".deployment.namespace" plconfig.yaml
       - name: Load chart
         id: chart
-        uses: mikefarah/yq@v4.28.2
+        uses: mikefarah/yq@v4.30.8
         with:
           cmd: yq ".deployment.chart" plconfig.yaml
       - name: Checkout ${{ inputs.deploymentRepoURL }} git repository
@@ -64,7 +64,7 @@ jobs:
           echo "do-not-edit=DO NOT EDIT. Auto generated from ${{ steps.name.outputs.result }} plconfig.yaml (replaces values.yaml instead)" >> $GITHUB_OUTPUT
       # Load plconfig values scoping to a subchart
       - name: Load external values for all environments
-        uses: mikefarah/yq@v4.28.2
+        uses: mikefarah/yq@v4.30.8
         with:
           cmd: >-
             $(yq '.deployment.values | has("dev")' plconfig.yaml) == 'true' && yq '{ "${{ steps.chart.outputs.result }}": .deployment.values.dev } | . head_comment="${{ steps.vars.outputs.do-not-edit }}"' plconfig.yaml > ${{ steps.vars.outputs.namespace-path }}/dev/${{ steps.name.outputs.result }}/values-external.yaml ||

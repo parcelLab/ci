@@ -31,7 +31,7 @@ jobs:
         uses: actions/checkout@v3
       - name: Load plconfig deployment values
         id: deployment-yaml
-        uses: mikefarah/yq@v4.28.2
+        uses: mikefarah/yq@v4.30.8
         with:
           cmd: yq -o json -I 0 '.deployment' plconfig.yaml
       - name: Load deployment type
