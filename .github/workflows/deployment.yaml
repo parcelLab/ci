@@ -35,7 +35,7 @@ jobs:
         with:
           cmd: yq -o json -I 0 '.deployment' plconfig.yaml
       - name: Load deployment type
-        id: vars
+        id: deployment-vars
         run: |
           # shellcheck disable=SC2086
           echo "name=${{ fromJSON(steps.deployment-yaml.outputs.result).name }}" >> $GITHUB_OUTPUT
@@ -45,7 +45,7 @@ jobs:
       # TODO - Lambda deployment
       # TODO - NPM deployment
       # Kubernetes deployment
-      - if: steps.vars.outputs.deploymentType == 'k8s'
+      - if: steps.deployment-vars.outputs.type == 'k8s'
         name: Load k8s deployment variables
         id: k8s
         run: |
@@ -73,8 +73,8 @@ jobs:
           echo "url=$URL" >> $GITHUB_OUTPUT
           # shellcheck disable=SC2086
           echo "status-url=$STATUS_URL" >> $GITHUB_OUTPUT
-      - if: steps.vars.outputs.deploymentType == 'k8s'
-        name: Create Github ${{ steps.vars.outputs.name }} k8s deployment
+      - if: steps.deployment-vars.outputs.type == 'k8s'
+        name: Create Github ${{ steps.deployment-vars.outputs.name }} k8s deployment
         uses: chrnorm/deployment-action@v2
         with:
           auto-merge: false
@@ -86,12 +86,12 @@ jobs:
               "author": ${{ toJSON(inputs.author) }},
               "chart": ${{ toJSON(steps.k8s.outputs.chart) }},
               "container": {
-                "context": ${{ toJSON(steps.vars.outputs.containerContextPath) }},
-                "file": ${{ toJSON(steps.vars.outputs.containerFile) }}
+                "context": ${{ toJSON(steps.deployment-vars.outputs.containerContextPath) }},
+                "file": ${{ toJSON(steps.deployment-vars.outputs.containerFile) }}
               },
               "description": ${{ toJSON(inputs.description) }},
               "env": ${{ toJSON(inputs.env) }},
-              "name": ${{ toJSON(steps.vars.outputs.name) }},
+              "name": ${{ toJSON(steps.deployment-vars.outputs.name) }},
               "namespace": ${{ toJSON(steps.k8s.outputs.namespace) }},
               "statusUrl": ${{ toJSON(steps.k8s.outputs.status-url) }},
               "url": ${{ toJSON(steps.k8s.outputs.url) }}
