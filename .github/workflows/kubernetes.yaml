@@ -32,6 +32,16 @@ on:
         description: The username for the container registry
         default: parcellab-dev-bot
         type: string
+      sentryOrg:
+        required: false
+        description: The Sentry organization that will hold the deployment
+        default: ""
+        type: string
+      sentryProject:
+        required: false
+        description: The Sentry project that will hold the deployment
+        default: ""
+        type: string
       slackChannelProd:
         required: false
         description: The Slack channel id to show production deployments
@@ -62,6 +72,9 @@ on:
       slackBotToken:
         required: false
         description: The Slack bot token to write messages in the desired channels (required if slack channel ids are provided)
+      sentryAuthToken:
+        required: false
+        description: The Sentry token to push deployments through its API
 jobs:
   kubernetes:
     environment: ${{ github.event.deployment.payload.env }}
@@ -196,4 +209,15 @@ jobs:
           sha: ${{ github.sha }}
           status_url: ${{ github.event.deployment.payload.statusUrl == null && 'https://github.com' || github.event.deployment.payload.statusUrl }}
           url: ${{ github.event.deployment.payload.url == null && 'https://github.com' || github.event.deployment.payload.url }}
+          version: ${{ steps.vars.outputs.version }}
+      - if: success() && inputs.sentryOrg != '' && inputs.sentryProject != ''
+        name: Create Sentry release
+        uses: getsentry/action-release@v1
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.sentryAuthToken }}
+          SENTRY_ORG: ${{ inputs.sentryOrg }}
+          SENTRY_PROJECT: ${{ inputs.sentryProject }}
+        with:
+          environment: ${{ github.event.deployment.payload.env }}
+          set_commits: skip
           version: ${{ steps.vars.outputs.version }}
