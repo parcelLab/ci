@@ -139,6 +139,7 @@ jobs:
     strategy:
       matrix:
         env: ${{ fromJSON(needs.kubernetes_matrix.outputs.matrix) }}
+      max-parallel: 1
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v3
