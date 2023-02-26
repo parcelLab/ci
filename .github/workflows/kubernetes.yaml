@@ -135,10 +135,17 @@ jobs:
           path: remote
           token: ${{ secrets.repoAccessToken }}
           ref: main
-      - name: Update ${{ github.event.deployment.payload.name }} version for ${{ github.event.deployment.environment }} values
+      # Legacy
+      - if: github.event.deployment.payload.schemaVersion != 'v2'
+        name: Update ${{ github.event.deployment.payload.name }} version for ${{ github.event.deployment.environment }} values
         uses: mikefarah/yq@v4.30.8
         with:
           cmd: yq '(.${{ github.event.deployment.payload.chart }}.image.tag = "${{ steps.vars.outputs.version }}")' -i remote/${{ inputs.deploymentRepoPath }}/${{ github.event.deployment.payload.namespace }}/${{ github.event.deployment.payload.env }}/${{ github.event.deployment.payload.name }}/${{ inputs.versionFilePath }}
+      - if: github.event.deployment.payload.schemaVersion == 'v2'
+        name: Update ${{ github.event.deployment.payload.name }} version for ${{ github.event.deployment.environment }} values
+        uses: mikefarah/yq@v4.30.8
+        with:
+          cmd: yq '(.${{ github.event.deployment.payload.kubernetes.versionKey }} = "${{ steps.vars.outputs.version }}")' -i remote/${{ inputs.deploymentRepoPath }}/${{ github.event.deployment.payload.kubernetes.namespace }}/${{ github.event.deployment.payload.env }}/${{ github.event.deployment.payload.name }}/${{ inputs.versionFilePath }}
       - name: Commit deployment file
         run: |
           cd remote
@@ -187,6 +194,6 @@ jobs:
           ref: ${{ github.ref }}
           repo: ${{ github.repository }}
           sha: ${{ github.sha }}
-          status_url: ${{ github.event.deployment.payload.statusUrl == null && '' || github.event.deployment.payload.statusUrl }}
-          url: ${{ github.event.deployment.payload.url == null && '' || github.event.deployment.payload.url }}
+          status_url: ${{ github.event.deployment.payload.statusUrl == null && 'https://github.com' || github.event.deployment.payload.statusUrl }}
+          url: ${{ github.event.deployment.payload.url == null && 'https://github.com' || github.event.deployment.payload.url }}
           version: ${{ steps.vars.outputs.version }}
