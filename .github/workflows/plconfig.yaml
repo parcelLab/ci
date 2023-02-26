@@ -170,13 +170,24 @@ jobs:
             yq '{ "dependencies": .deployment.kubernetes.env.${{ matrix.env }}.dependencies } * {"apiVersion": "v2", "name": "${{ fromJSON(steps.json.outputs.result).name }}", "description": "${{ fromJSON(steps.json.outputs.result).description }} (${{ matrix.env }})", "version": "0.0.0"}' ${{ inputs.configurationFilepath }} > ${{ steps.vars.outputs.namespace-path }}/${{ matrix.env }}/${{ fromJSON(steps.json.outputs.result).name }}/Chart.yaml
       # Commit & Push to GitOps repo
       - name: Commit deployment files for ${{ matrix.env }}
+        id: commit
         run: |
           cd remote
-          git config --global user.email "${{ inputs.botEmail }}"
-          git config --global user.name "${{ inputs.botName }}"
-          git add .
-          git commit --allow-empty -m "chore(${{ fromJSON(steps.json.outputs.result).name }}): set parcelLab ${{ matrix.env }} config values"
-      - name: Push changes to main in ${{ inputs.deploymentRepoURL }} git repository for ${{ matrix.env }}
+          if [[ $(git status --porcelain --untracked-files=no | wc -l) -gt 0 ]]; then
+            # Untracked changes
+            git config --global user.email "${{ inputs.botEmail }}"
+            git config --global user.name "${{ inputs.botName }}"
+            git add .
+            git commit --allow-empty -m "chore(${{ fromJSON(steps.json.outputs.result).name }}): set parcelLab ${{ matrix.env }} config values"
+            # shellcheck disable=SC2086
+            echo "has-changes=true" >> $GITHUB_OUTPUT
+          else
+            # No changes, ignore
+            # shellcheck disable=SC2086
+            echo "has-changes=false" >> $GITHUB_OUTPUT
+          fi
+      - if: steps.commit.outputs.has-changes == 'true'
+        name: Push changes to main in ${{ inputs.deploymentRepoURL }} git repository for ${{ matrix.env }}
         uses: ad-m/github-push-action@0fafdd62b84042d49ec0cb92d9cac7f7ce4ec79e
         with:
           repository: ${{ inputs.deploymentRepoURL }}
