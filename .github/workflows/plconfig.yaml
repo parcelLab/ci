@@ -124,7 +124,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [detect_declarations]
     outputs:
-      matrix: ${{ steps.envs.outputs.matrix }}
+      matrix: ${{ steps.envs.outputs.result }}
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v3
