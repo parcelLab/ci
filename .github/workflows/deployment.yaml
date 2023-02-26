@@ -89,7 +89,7 @@ jobs:
           echo "url=$URL" >> $GITHUB_OUTPUT
           # shellcheck disable=SC2086
           echo "status-url=$STATUS_URL" >> $GITHUB_OUTPUT
-      - name: Create Github ${{ steps.deployment-vars.outputs.name }} k8s deployment
+      - name: Create Github ${{ fromJSON(steps.deployment-yaml.outputs.result).name }} k8s deployment
         uses: chrnorm/deployment-action@v2
         with:
           auto-merge: false
@@ -106,7 +106,7 @@ jobs:
               },
               "description": ${{ toJSON(inputs.description) }},
               "env": ${{ toJSON(inputs.env) }},
-              "name": ${{ toJSON(steps.deployment-vars.outputs.name) }},
+              "name": ${{ toJSON(fromJSON(steps.deployment-yaml.outputs.result).name) }},
               "namespace": ${{ toJSON(steps.k8s.outputs.namespace) }},
               "statusUrl": ${{ toJSON(steps.k8s.outputs.status-url) }},
               "url": ${{ toJSON(steps.k8s.outputs.url) }}
@@ -167,7 +167,7 @@ jobs:
           echo "url=$URL" >> $GITHUB_OUTPUT
           # shellcheck disable=SC2086
           echo "status-url=$STATUS_URL" >> $GITHUB_OUTPUT
-      - name: Create Github ${{ steps.deployment-vars.outputs.name }} k8s deployment
+      - name: Create Github ${{ fromJSON(steps.values.outputs.result).name }} k8s deployment
         uses: chrnorm/deployment-action@v2
         with:
           auto-merge: false
