@@ -45,9 +45,9 @@ jobs:
         with:
           cmd: yq ".schemaVersion" ${{ inputs.configurationFilepath }}
   plconfig_legacy:
+    if: needs.read_schema_version.outputs.version != 'v2'
     runs-on: ubuntu-latest
     needs: [read_schema_version]
-    if: needs.read_schema_version.outputs.version != 'v2'
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v3
@@ -106,9 +106,9 @@ jobs:
           branch: main
           force: true
   detect_declarations:
+    if: needs.read_schema_version.outputs.version == 'v2'
     runs-on: ubuntu-latest
     needs: [read_schema_version]
-    if: needs.read_schema_version.outputs.version == 'v2'
     outputs:
       has-kubernetes: ${{ steps.has-kubernetes.outputs.result }}
     steps:
@@ -119,10 +119,26 @@ jobs:
         uses: mikefarah/yq@v4.30.8
         with:
           cmd: yq '.deployment | has("kubernetes")' ${{ inputs.configurationFilepath }}
-  kubernetes_values:
+  kubernetes_matrix:
+    if: needs.detect_declarations.outputs.has-kubernetes == 'true'
     runs-on: ubuntu-latest
     needs: [detect_declarations]
-    if: needs.detect_declarations.outputs.has-kubernetes == 'true'
+    outputs:
+      matrix: ${{ steps.envs.outputs.matrix }}
+    steps:
+      - name: Checkout current git repository
+        uses: actions/checkout@v3
+      - name: Detect envs
+        id: envs
+        uses: mikefarah/yq@v4.30.8
+        with:
+          cmd: yq '.deployment.kubernetes.env | keys' ${{ inputs.configurationFilepath }} -o=json -I=0
+  kubernetes_env:
+    runs-on: ubuntu-latest
+    needs: [kubernetes_matrix]
+    strategy:
+      matrix:
+        env: ${{ fromJSON(needs.kubernetes_matrix.outputs.matrix) }}
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v3
@@ -138,26 +154,6 @@ jobs:
         uses: mikefarah/yq@v4.30.8
         with:
           cmd: yq "." ${{ inputs.configurationFilepath }} -o=json -I=0
-      - name: Detect values for dev environment
-        id: has-dev-values
-        uses: mikefarah/yq@v4.30.8
-        with:
-          cmd: yq '.deployment.kubernetes.env.dev | has("values")' ${{ inputs.configurationFilepath }}
-      - name: Detect values for prod environment
-        id: has-prod-values
-        uses: mikefarah/yq@v4.30.8
-        with:
-          cmd: yq '.deployment.kubernetes.env.prod | has("values")' ${{ inputs.configurationFilepath }}
-      - name: Detect values for staging environment
-        id: has-staging-values
-        uses: mikefarah/yq@v4.30.8
-        with:
-          cmd: yq '.deployment.kubernetes.env.staging | has("values")' ${{ inputs.configurationFilepath }}
-      - name: Detect values for test environment
-        id: has-test-values
-        uses: mikefarah/yq@v4.30.8
-        with:
-          cmd: yq '.deployment.kubernetes.env.test | has("values")' ${{ inputs.configurationFilepath }}
       - name: Load common vars
         id: vars
         run: |
@@ -165,39 +161,21 @@ jobs:
           echo "namespace-path=remote/${{ inputs.deploymentRepoPath }}/${{ fromJSON(steps.json.outputs.result).deployment.kubernetes.namespace }}" >> $GITHUB_OUTPUT
           # shellcheck disable=SC2086
           echo "do-not-edit=DO NOT EDIT. Auto generated from ${{ fromJSON(steps.json.outputs.result).name }} ${{ inputs.configurationFilepath }} (replaces values.yaml instead)" >> $GITHUB_OUTPUT
-      - if: steps.has-dev-values.outputs.result == 'true'
-        name: Load external values for dev
+      - name: Load external values for ${{ matrix.env }}
         uses: mikefarah/yq@v4.30.8
         with:
           cmd: >-
-            yq '.deployment.kubernetes.env.dev.values | . head_comment="${{ steps.vars.outputs.do-not-edit }}"' ${{ inputs.configurationFilepath }} > ${{ steps.vars.outputs.namespace-path }}/dev/${{ fromJSON(steps.json.outputs.result).name }}/values-external.yaml
-      - if: steps.has-prod-values.outputs.result == 'true'
-        name: Load external values for prod
-        uses: mikefarah/yq@v4.30.8
-        with:
-          cmd: >-
-            yq '.deployment.kubernetes.env.prod.values | . head_comment="${{ steps.vars.outputs.do-not-edit }}"' ${{ inputs.configurationFilepath }} > ${{ steps.vars.outputs.namespace-path }}/prod/${{ fromJSON(steps.json.outputs.result).name }}/values-external.yaml
-      - if: steps.has-staging-values.outputs.result == 'true'
-        name: Load external values for staging
-        uses: mikefarah/yq@v4.30.8
-        with:
-          cmd: >-
-            yq '.deployment.kubernetes.env.staging.values | . head_comment="${{ steps.vars.outputs.do-not-edit }}"' ${{ inputs.configurationFilepath }} > ${{ steps.vars.outputs.namespace-path }}/staging/${{ fromJSON(steps.json.outputs.result).name }}/values-external.yaml
-      - if: steps.has-test-values.outputs.result == 'true'
-        name: Load external values for test
-        uses: mikefarah/yq@v4.30.8
-        with:
-          cmd: >-
-            yq '.deployment.kubernetes.env.test.values | . head_comment="${{ steps.vars.outputs.do-not-edit }}"' ${{ inputs.configurationFilepath }} > ${{ steps.vars.outputs.namespace-path }}/test/${{ fromJSON(steps.json.outputs.result).name }}/values-external.yaml
+            yq '.deployment.kubernetes.env.${{ matrix.env }}.values | . head_comment="${{ steps.vars.outputs.do-not-edit }}"' ${{ inputs.configurationFilepath }} > ${{ steps.vars.outputs.namespace-path }}/${{ matrix.env }}/${{ fromJSON(steps.json.outputs.result).name }}/values-external.yaml &&
+            yq '{ "dependencies": .deployment.kubernetes.env.${{ matrix.env }}.dependencies } * {"apiVersion": "v2", "name": "${{ fromJSON(steps.json.outputs.result).name }}", "description": "${{ fromJSON(steps.json.outputs.result).description }} (${{ matrix.env }})", "version": "0.0.0"}' ${{ inputs.configurationFilepath }} > ${{ steps.vars.outputs.namespace-path }}/${{ matrix.env }}/${{ fromJSON(steps.json.outputs.result).name }}/Chart.yaml
       # Commit & Push to GitOps repo
-      - name: Commit deployment files
+      - name: Commit deployment files for ${{ matrix.env }}
         run: |
           cd remote
           git config --global user.email "${{ inputs.botEmail }}"
           git config --global user.name "${{ inputs.botName }}"
           git add .
-          git commit --allow-empty -m "chore(${{ fromJSON(steps.json.outputs.result).name }}): set parcelLab config values"
-      - name: Push changes to main in ${{ inputs.deploymentRepoURL }} git repository
+          git commit --allow-empty -m "chore(${{ fromJSON(steps.json.outputs.result).name }}): set parcelLab ${{ matrix.env }} config values"
+      - name: Push changes to main in ${{ inputs.deploymentRepoURL }} git repository for ${{ matrix.env }}
         uses: ad-m/github-push-action@0fafdd62b84042d49ec0cb92d9cac7f7ce4ec79e
         with:
           repository: ${{ inputs.deploymentRepoURL }}
