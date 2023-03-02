@@ -148,9 +148,9 @@ jobs:
           # shellcheck disable=SC2086
           echo "version-key=${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.versionKey }}" >> $GITHUB_OUTPUT
           # shellcheck disable=SC2086
-          echo "container-context=${{ fromJSON(steps.values.outputs.result).container.context || '.' }}" >> $GITHUB_OUTPUT
+          echo "container-context=${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.container.context || '.' }}" >> $GITHUB_OUTPUT
           # shellcheck disable=SC2086
-          echo "container-file=${{ fromJSON(steps.values.outputs.result).container.file || 'Containerfile' }}" >> $GITHUB_OUTPUT
+          echo "container-file=${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.container.file || 'Containerfile' }}" >> $GITHUB_OUTPUT
           if [[ "${{ inputs.env }}" == 'prod' ]]
           then
             URL="${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.env.prod.metadata.url }}"
