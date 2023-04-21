@@ -2,6 +2,11 @@ name: Reusable Kubernetes
 on:
   workflow_call:
     inputs:
+      artifactPath:
+        required: false
+        description: Same format as actions/upload-artifact 'path' input. If provided, build the package and uploads the selected path as an artifact. Disabled by default.
+        default: ""
+        type: string
       botEmail:
         required: false
         description: The email of the bot that will appear in the GitOps commit
@@ -119,6 +124,12 @@ jobs:
           token: ${{ github.token }}
       - name: Checkout current git repository
         uses: actions/checkout@v3
+      - if: inputs.artifactPath != ''
+        name: Download build artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ github.sha }}
+          path: ${{ inputs.artifactPath }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Login to Container Registry
