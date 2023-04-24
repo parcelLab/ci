@@ -128,7 +128,7 @@ jobs:
         name: Download build artifact
         uses: actions/download-artifact@v3
         with:
-          name: ${{ github.sha }}
+          name: ${{ github.ref }}
           path: ${{ inputs.artifactPath }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
