@@ -56,8 +56,16 @@ jobs:
         name: Run build
         run: npm run build
       - if: inputs.artifactPath != ''
+        name: Modify github.ref_name so special characters are converted to "_"
+        id: ref_name_modified
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const refName = context.ref.split('/').pop().replace(/[\/\\:\*?"<>|#%]/g, '_');
+            return { refName };
+      - if: inputs.artifactPath != ''
         name: Upload build artifact
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ github.ref_name }}
+          name: ${{ steps.ref_name_modified.outputs.refName }}
           path: ${{ inputs.artifactPath }}
