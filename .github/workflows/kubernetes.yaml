@@ -125,18 +125,18 @@ jobs:
       - name: Checkout current git repository
         uses: actions/checkout@v3
       - if: inputs.artifactPath != ''
-        name: Modify github.ref_name so special characters are converted to "_"
-        id: ref_name_modified
+        name: Modify github.ref so special characters are converted to "_"
+        id: ref_modified
         uses: actions/github-script@v6
         with:
           script: |
-            const refName = context.ref.split('/').pop().replace(/[\/\\:\*?"<>|#%]/g, '_');
-            return { refName };
+            const ref = context.ref.replace(/[\/\\:\*?"<>|#%]/g, '_');
+            return { ref };
       - if: inputs.artifactPath != ''
         name: Download build artifact
         uses: actions/download-artifact@v3
         with:
-          name: ${{ steps.ref_name_modified.outputs.refName }}
+          name: ${{ steps.ref_modified.outputs.ref }}
           path: ${{ inputs.artifactPath }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
