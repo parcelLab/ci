@@ -59,5 +59,5 @@ jobs:
         name: Upload build artifact
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ github.ref }}
+          name: ${{ github.ref_name }}
           path: ${{ inputs.artifactPath }}
