@@ -126,7 +126,11 @@ jobs:
         uses: actions/checkout@v3
       - if: inputs.preScript != ''
         name: Run script before the docker image is built
-        run: ${{ inputs.preScript }}
+        run: |
+          echo "Run '${{ inputs.preScript }}'"
+          ${{ inputs.preScript }}
+        env:
+          NPM_GITHUB_TOKEN: ${{ secrets.npmGithubReadToken }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Login to Container Registry
