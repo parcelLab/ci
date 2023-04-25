@@ -128,7 +128,7 @@ jobs:
         name: Run script before the docker image is built
         uses: actions/github-script@v6
         with:
-          script: inputs.preScript
+          script: ${{ inputs.preScript }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Login to Container Registry
