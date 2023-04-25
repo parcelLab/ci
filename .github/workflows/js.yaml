@@ -62,10 +62,10 @@ jobs:
         with:
           script: |
             const ref = context.ref.replace(/[\/\\:\*?"<>|#%]/g, '_');
-            return { ref };
+            core.setOutput('ref', ref);
       - if: inputs.artifactPath != ''
         name: Upload build artifact
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ steps.ref_modified.outputs.ref }}
+          name: artifact.${{ steps.ref_modified.outputs.ref }}
           path: ${{ inputs.artifactPath }}
