@@ -2,11 +2,6 @@ name: Reusable Kubernetes
 on:
   workflow_call:
     inputs:
-      artifactPath:
-        required: false
-        description: Same format as actions/upload-artifact 'path' input. If provided, build the package and uploads the selected path as an artifact. Disabled by default.
-        default: ""
-        type: string
       botEmail:
         required: false
         description: The email of the bot that will appear in the GitOps commit
@@ -21,6 +16,11 @@ on:
         required: false
         description: The repository within Github that holds the version file to deploy via GitOps
         default: parcelLab/deployment
+        type: string
+      preScript:
+        required: false
+        description: If provided, runs a script after repo checkout and before the docker image is built. Useful in case that you need to build a package outside of the docker image (and load the artifacts via copy).
+        default: ""
         type: string
       registryHostname:
         required: false
@@ -124,20 +124,11 @@ jobs:
           token: ${{ github.token }}
       - name: Checkout current git repository
         uses: actions/checkout@v3
-      - if: inputs.artifactPath != ''
-        name: Modify github.ref so special characters are converted to "_"
-        id: ref_modified
+      - if: inputs.preScript != ''
+        name: Run script before the docker image is built
         uses: actions/github-script@v6
         with:
-          script: |
-            const ref = context.ref.replace(/[\/\\:\*?"<>|#%]/g, '_');
-            core.setOutput('ref', ref);
-      - if: inputs.artifactPath != ''
-        name: Download build artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: artifact.${{ steps.ref_modified.outputs.ref }}
-          path: ${{ inputs.artifactPath }}
+          script: inputs.preScript
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Login to Container Registry
