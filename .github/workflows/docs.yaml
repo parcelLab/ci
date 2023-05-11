@@ -22,6 +22,11 @@ on:
         description: The repository within Github that holds the central documentation files
         default: parcelLab/documentation
         type: string
+      runner:
+        required: false
+        description: Runner type
+        default: ubuntu-latest
+        type: string
     secrets:
       repoAccessToken:
         required: true
@@ -29,7 +34,7 @@ on:
 jobs:
   jekyll:
     if: github.ref == 'refs/heads/${{ inputs.defaultBranch }}'
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     steps:
       - name: Load workflow variables
         id: vars

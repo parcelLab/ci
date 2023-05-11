@@ -24,6 +24,11 @@ on:
         description: The github ref to deploy
         default: main
         type: string
+      runner:
+        required: false
+        description: Runner type
+        default: ubuntu-latest
+        type: string
       statusUrl:
         required: false
         description: The url that shows the status of the application
@@ -38,7 +43,7 @@ on:
         description: The Github token to perform operations cross-repo (not secrets.GITHUB_TOKEN!)
 jobs:
   read_schema_version:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     outputs:
       version: ${{ steps.version.outputs.result }}
     steps:
@@ -51,7 +56,7 @@ jobs:
           cmd: yq ".schemaVersion" ${{ inputs.configurationFilepath }}
   # Deprecated
   deployment_legacy:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     needs: [read_schema_version]
     if: needs.read_schema_version.outputs.version != 'v2'
     steps:
@@ -115,7 +120,7 @@ jobs:
           transient-environment: "${{ inputs.env == 'test' }}"
           token: ${{ secrets.repoAccessToken }}
   detect_declarations:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     needs: [read_schema_version]
     if: needs.read_schema_version.outputs.version == 'v2'
     outputs:
@@ -129,7 +134,7 @@ jobs:
         with:
           cmd: yq '.deployment | has("kubernetes")' ${{ inputs.configurationFilepath }}
   kubernetes:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     needs: [detect_declarations]
     if: needs.detect_declarations.outputs.has-kubernetes == 'true'
     steps:

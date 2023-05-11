@@ -37,6 +37,11 @@ on:
         description: The node version to provide (e.g. `lts/*`, `18`, `18.4`...)
         default: latest
         type: string
+      runner:
+        required: false
+        description: Runner type
+        default: ubuntu-latest
+        type: string
       scope:
         required: false
         description: The npm organization (defaults to @parcellab)
@@ -55,7 +60,7 @@ on:
         description: The npm token with permissions to write NPM packages to the desired scope
 jobs:
   npm-publish:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v3

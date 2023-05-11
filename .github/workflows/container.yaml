@@ -36,6 +36,11 @@ on:
         description: The username for the container registry
         default: parcellab-dev-bot
         type: string
+      runner:
+        required: false
+        description: Runner type
+        default: ubuntu-latest
+        type: string
       version:
         required: true
         description: The version to push
@@ -49,7 +54,7 @@ on:
         description: The password for the container registry
 jobs:
   container:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v3

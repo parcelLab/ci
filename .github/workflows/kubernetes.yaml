@@ -37,6 +37,11 @@ on:
         description: The username for the container registry
         default: parcellab-dev-bot
         type: string
+      runner:
+        required: false
+        description: Runner type
+        default: ubuntu-latest
+        type: string
       sentryOrg:
         required: false
         description: The Sentry organization that will hold the deployment
@@ -89,7 +94,7 @@ jobs:
   kubernetes:
     environment: ${{ github.event.deployment.payload.env }}
     concurrency: ${{ github.event.deployment.payload.env }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     steps:
       - name: Load deployment variables
         id: vars

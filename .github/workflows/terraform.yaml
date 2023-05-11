@@ -2,6 +2,11 @@ name: Reusable Terraform
 on:
   workflow_call:
     inputs:
+      runner:
+        required: false
+        description: Runner type
+        default: ubuntu-latest
+        type: string
       tfFolder:
         required: false
         description: The root folder that holds the terraform stack or stacks (as subfolders)
@@ -18,7 +23,7 @@ on:
         description: The Terraform API Token (if using Terraform Cloud)
 jobs:
   tf:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v3

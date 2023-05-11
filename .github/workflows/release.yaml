@@ -12,6 +12,11 @@ on:
         description: Defines if the release to create is a prerelease. Defaults to false
         default: false
         type: boolean
+      runner:
+        required: false
+        description: Runner type
+        default: ubuntu-latest
+        type: string
       targetBranch:
         required: false
         description: The target branch for the release being created
@@ -33,7 +38,7 @@ on:
         description: The Github token to perform operations cross-repo (not secrets.GITHUB_TOKEN!)
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     steps:
       - name: Create Github release
         uses: darioblanco/release-wizard@v2.0.3

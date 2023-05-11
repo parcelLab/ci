@@ -27,13 +27,18 @@ on:
         description: The repository within Github that holds the version file to deploy via GitOps
         default: parcelLab/deployment
         type: string
+      runner:
+        required: false
+        description: Runner type
+        default: ubuntu-latest
+        type: string
     secrets:
       repoAccessToken:
         required: true
         description: The Github token to perform operations cross-repo (not secrets.GITHUB_TOKEN!)
 jobs:
   read_schema_version:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     outputs:
       version: ${{ steps.version.outputs.result }}
     steps:
@@ -46,7 +51,7 @@ jobs:
           cmd: yq ".schemaVersion" ${{ inputs.configurationFilepath }}
   plconfig_legacy:
     if: needs.read_schema_version.outputs.version != 'v2'
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     needs: [read_schema_version]
     steps:
       - name: Checkout current git repository
@@ -107,7 +112,7 @@ jobs:
           force: true
   detect_declarations:
     if: needs.read_schema_version.outputs.version == 'v2'
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     needs: [read_schema_version]
     outputs:
       has-kubernetes: ${{ steps.has-kubernetes.outputs.result }}
@@ -121,7 +126,7 @@ jobs:
           cmd: yq '.deployment | has("kubernetes")' ${{ inputs.configurationFilepath }}
   kubernetes_matrix:
     if: needs.detect_declarations.outputs.has-kubernetes == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     needs: [detect_declarations]
     outputs:
       matrix: ${{ steps.envs.outputs.result }}
@@ -134,7 +139,7 @@ jobs:
         with:
           cmd: yq '.deployment.kubernetes.env | keys' ${{ inputs.configurationFilepath }} -o=json -I=0
   kubernetes_env:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     needs: [kubernetes_matrix]
     strategy:
       matrix:

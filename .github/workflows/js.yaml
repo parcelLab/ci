@@ -17,13 +17,18 @@ on:
         description: The node version to provide (e.g. `lts/*`, `18`, `18.4`...)
         default: latest
         type: string
+      runner:
+        required: false
+        description: Runner type
+        default: ubuntu-latest
+        type: string
     secrets:
       npmGithubReadToken:
         required: true
         description: The Github token with permissions to read NPM private packages
 jobs:
   js:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v3

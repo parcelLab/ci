@@ -7,9 +7,14 @@ on:
         description: The python version to provide (e.g. `3.x`)
         default: 3.x
         type: string
+      runner:
+        required: false
+        description: Runner type
+        default: ubuntu-latest
+        type: string
 jobs:
   python:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v3
