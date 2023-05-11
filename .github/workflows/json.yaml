@@ -1,9 +1,15 @@
 name: Reusable JSON
 on:
   workflow_call:
+    inputs:
+      runner:
+        required: false
+        description: Runner type
+        default: ubuntu-latest
+        type: string
 jobs:
   json:
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.inputs.runner }}
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v3
