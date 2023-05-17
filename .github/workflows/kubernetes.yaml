@@ -145,7 +145,6 @@ jobs:
         name: Download artifact
         uses: actions/download-artifact@v3
         with:
-          name: container-artifact
           path: ${{ inputs.artifactPath }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
