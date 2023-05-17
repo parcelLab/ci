@@ -2,9 +2,14 @@ name: Reusable Kubernetes
 on:
   workflow_call:
     inputs:
+      artifactName:
+        required: false
+        description: If provided, downloads a previously uploaded artifact (has to be in the same workflow). Both artifactPath and artifactName have to be passed.
+        default: ""
+        type: string
       artifactPath:
         required: false
-        description: If provided, downloads a previously uploaded artifact (has to be in the same workflow).
+        description: If provided, downloads a previously uploaded artifact (has to be in the same workflow). Both artifactPath and artifactName have to be passed.
         default: ""
         type: string
       botEmail:
@@ -141,10 +146,11 @@ jobs:
           ${{ inputs.preScript }}
         env:
           NPM_GITHUB_TOKEN: ${{ secrets.npmGithubReadToken }}
-      - if: inputs.artifactPath != ''
+      - if: inputs.artifactPath != '' && inputs.artifactName != ''
         name: Download artifact
         uses: actions/download-artifact@v3
         with:
+          name: ${{ inputs.artifactName }}
           path: ${{ inputs.artifactPath }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
