@@ -2,6 +2,11 @@ name: Reusable Kubernetes
 on:
   workflow_call:
     inputs:
+      artifactPath:
+        required: false
+        description: If provided, downloads a previously uploaded artifact (has to be in the same workflow).
+        default: ""
+        type: string
       botEmail:
         required: false
         description: The email of the bot that will appear in the GitOps commit
@@ -136,6 +141,12 @@ jobs:
           ${{ inputs.preScript }}
         env:
           NPM_GITHUB_TOKEN: ${{ secrets.npmGithubReadToken }}
+      - if: inputs.artifactPath != ''
+        name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: container-artifact
+          path: ${{ inputs.artifactPath }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Login to Container Registry
