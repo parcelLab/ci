@@ -7,11 +7,6 @@ on:
         description: Runner type
         default: ubuntu-latest
         type: string
-      tfFolder:
-        required: false
-        description: The root folder that holds the terraform stack or stacks (as subfolders)
-        default: .
-        type: string
       tflintConfigPath:
         required: false
         description: The path to the tflint configuration
@@ -43,8 +38,8 @@ jobs:
       - name: Init TFLint
         run: |
           # shellcheck disable=SC2038
-          find ${{ inputs.tfFolder }} -type f -not -path "*/.terraform*" -name 'main.tf' -exec dirname {} \; | xargs -I {} tflint -c ${{ inputs.tflintConfigPath }} --init {}
+          tflint --init --recursive -c $(pwd)/${{ inputs.tflintConfigPath }}
       - name: Run TFLint for all Terraform modules
         run: |
           # shellcheck disable=SC2038
-          find ${{ inputs.tfFolder }} -type f -not -path "*/.terraform*" -name 'main.tf' -exec dirname {} \; | xargs -I {} tflint -c ${{ inputs.tflintConfigPath }} {}
+          tflint --init --recursive -c $(pwd)/${{ inputs.tflintConfigPath }}
