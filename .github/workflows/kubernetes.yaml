@@ -260,3 +260,4 @@ jobs:
           environment: ${{ github.event.deployment.payload.env }}
           set_commits: skip
           version: ${{ steps.vars.outputs.version }}
+        continue-on-error: true
