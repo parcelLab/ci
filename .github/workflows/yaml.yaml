@@ -7,6 +7,16 @@ on:
         description: Runner type
         default: ubuntu-latest
         type: string
+      args:
+        required: false
+        description: List of yaml files to include
+        default: "**/*.{yaml,yml}"
+        type: string
+      excluded_args:
+        required: false
+        description: List of yaml files to exclude
+        default: ""
+        type: string
 jobs:
   yaml:
     runs-on: ${{ inputs.runner }}
@@ -16,4 +26,4 @@ jobs:
       - name: Lint YAML
         uses: actionsx/prettier@v2
         with:
-          args: --check "**/*.{yaml,yml}"
+          args: --check "${{ inputs.args }}" "${{ inputs.excluded_args }}"
