@@ -7,7 +7,7 @@ on:
         description: Runner type
         default: ubuntu-latest
         type: string
-      excluded_args:
+      additional_args:
         required: false
         description: List of yaml files to exclude
         type: string
@@ -20,12 +20,12 @@ jobs:
 
       - name: Lint all YAML files
         uses: actionsx/prettier@v2
-        if: ${{ inputs.excluded_args == '' }}
+        if: ${{ inputs.additional_args == '' }}
         with:
           args: --check "**/*.{yaml,yml}"
 
       - name: Lint some YAML files
         uses: actionsx/prettier@v2
-        if: ${{ inputs.excluded_args != '' }}
+        if: ${{ inputs.additional_args != '' }}
         with:
-          args: --check "**/*.{yaml,yml}" "${{ inputs.excluded_args }}"
+          args: --check "**/*.{yaml,yml}" "${{ inputs.additional_args }}"
