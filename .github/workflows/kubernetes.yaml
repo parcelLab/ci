@@ -179,12 +179,6 @@ jobs:
             ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:latest
             ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:${{ steps.vars.outputs.version }}
             ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:${{ github.sha }}
-      - name: Clean up images
-        uses: actions/delete-package-versions@v4
-        with:
-          package-name: ${{ github.event.deployment.payload.name }}
-          package-type: container
-          min-versions-to-keep: ${{ github.event.deployment.payload.env == 'prod' && '50' || '5' }}
       - name: Checkout ${{ inputs.deploymentRepoURL }} git repository
         uses: actions/checkout@v3
         with:
