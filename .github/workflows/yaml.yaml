@@ -7,15 +7,9 @@ on:
         description: Runner type
         default: ubuntu-latest
         type: string
-      args:
-        required: false
-        description: List of yaml files to include
-        default: "**/*.{yaml,yml}"
-        type: string
-      excluded_args:
+      additional_args:
         required: false
         description: List of yaml files to exclude
-        default: ""
         type: string
 jobs:
   yaml:
@@ -23,7 +17,15 @@ jobs:
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v3
-      - name: Lint YAML
+
+      - name: Lint all YAML files
         uses: actionsx/prettier@v2
+        if: ${{ inputs.additional_args == '' }}
         with:
-          args: --check "${{ inputs.args }}" "${{ inputs.excluded_args }}"
+          args: --check "**/*.{yaml,yml}"
+
+      - name: Lint some YAML files
+        uses: actionsx/prettier@v2
+        if: ${{ inputs.additional_args != '' }}
+        with:
+          args: --check "**/*.{yaml,yml}" "${{ inputs.additional_args }}"
