@@ -261,3 +261,9 @@ jobs:
           set_commits: skip
           version: ${{ steps.vars.outputs.version }}
         continue-on-error: true
+      - name: Clean up images
+        uses: actions/delete-package-versions@v4
+        with:
+          package-name: ${{ github.event.deployment.payload.name }}
+          package-type: container
+          min-versions-to-keep: ${{ github.event.deployment.payload.env == 'prod' && '50' || '5' }}
