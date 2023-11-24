@@ -243,7 +243,7 @@ jobs:
           environment: ${{ github.event.deployment.payload.env == null && 'unknown' || github.event.deployment.payload.env }}
           owner: ${{ github.event.deployment.payload.author == null && inputs.registryUsername || github.event.deployment.payload.author }}
           package: ${{ github.event.deployment.payload.name == null && 'unknown' || github.event.deployment.payload.name }}
-          ref: ${{ github.event.deployment.ref }}
+          ref: ${{ github.event.deployment.ref == null && 'unknown' || github.event.deployment.ref }}
           repo: ${{ github.repository }}
           sha: ${{ github.sha }}
           status_url: ${{ github.event.deployment.payload.statusUrl == null && 'https://github.com' || github.event.deployment.payload.statusUrl }}
