@@ -232,6 +232,7 @@ jobs:
           token: ${{ github.token }}
       - if: success() && steps.vars.outputs.channel-id != ''
         name: Notify ${{ github.event.deployment.payload.name }} deployment success
+        continue-on-error: true
         uses: darioblanco/slack-deployment@main
         env:
           SLACK_BOT_TOKEN: ${{ secrets.slackBotToken }}
