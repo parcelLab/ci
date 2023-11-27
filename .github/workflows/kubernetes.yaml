@@ -268,4 +268,5 @@ jobs:
           package-name: ${{ github.event.deployment.payload.name }}
           package-type: container
           min-versions-to-keep: ${{ github.event.deployment.payload.env == 'prod' && '50' || '5' }}
+          token: ${{ secrets.repoAccessToken }}
         continue-on-error: true
