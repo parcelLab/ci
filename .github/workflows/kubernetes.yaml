@@ -67,6 +67,11 @@ on:
         description: The URL used to connect to Sentry. (Only required for Self-Hosted Sentry).
         default: "https://sentry.io/"
         type: string
+      sentryEnvironment:
+        required: false
+        description: Slug of the environment used by the application to report error to Sentry
+        default: ""
+        type: string
       slackChannelProd:
         required: false
         description: The Slack channel id to show production deployments
@@ -258,7 +263,7 @@ jobs:
           SENTRY_PROJECT: ${{ inputs.sentryProject }}
           SENTRY_URL: ${{ inputs.sentryUrl }}
         with:
-          environment: ${{ github.event.deployment.payload.env }}
+          environment: ${{ inputs.sentryEnvironment != '' && inputs.sentryEnvironment || github.event.deployment.payload.env }}
           set_commits: skip
           version: ${{ steps.vars.outputs.version }}
         continue-on-error: true
