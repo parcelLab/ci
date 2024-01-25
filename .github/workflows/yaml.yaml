@@ -11,6 +11,11 @@ on:
         required: false
         description: List of yaml files to exclude
         type: string
+      format:
+        required: false
+        description: Run prettier with write argument
+        default: false
+        type: boolean
 jobs:
   yaml:
     runs-on: ${{ inputs.runner }}
@@ -18,14 +23,26 @@ jobs:
       - name: Checkout current git repository
         uses: actions/checkout@v3
 
-      - name: Lint all YAML files
+      - name: Check linting all YAML files
         uses: actionsx/prettier@v3
-        if: ${{ inputs.additional_args == '' }}
+        if: (${{ inputs.additional_args == '' }}) && (${{ !inputs.format }})
         with:
           args: --check "**/*.{yaml,yml}"
 
-      - name: Lint some YAML files
+      - name: Linting all YAML files
         uses: actionsx/prettier@v3
-        if: ${{ inputs.additional_args != '' }}
+        if: (${{ inputs.additional_args == '' }}) && (${{ inputs.format }})
+        with:
+          args: --write "**/*.{yaml,yml}"
+
+      - name: Check linting of some YAML files
+        uses: actionsx/prettier@v3
+        if: (${{ inputs.additional_args != '' }}) && (${{ !inputs.format }})
         with:
           args: --check "**/*.{yaml,yml}" "${{ inputs.additional_args }}"
+
+      - name: Linting some YAML files
+        uses: actionsx/prettier@v3
+        if: (${{ inputs.additional_args != '' }}) && (${{ inputs.format }})
+        with:
+          args: --write "**/*.{yaml,yml}" "${{ inputs.additional_args }}"
