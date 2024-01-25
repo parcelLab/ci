@@ -25,24 +25,24 @@ jobs:
 
       - name: Check linting all YAML files
         uses: actionsx/prettier@v3
-        if: (${{ inputs.additional_args == '' }}) && (${{ !inputs.format }})
+        if: (${{ inputs.additional_args == '' }}) && (${{ inputs.format == false }})
         with:
           args: --check "**/*.{yaml,yml}"
 
       - name: Linting all YAML files
         uses: actionsx/prettier@v3
-        if: (${{ inputs.additional_args == '' }}) && (${{ inputs.format }})
+        if: (${{ inputs.additional_args == '' }}) && (${{ inputs.format == true }})
         with:
           args: --write "**/*.{yaml,yml}"
 
       - name: Check linting of some YAML files
         uses: actionsx/prettier@v3
-        if: (${{ inputs.additional_args != '' }}) && (${{ !inputs.format }})
+        if: (${{ inputs.additional_args != '' }}) && (${{ !inputs.format == false }})
         with:
           args: --check "**/*.{yaml,yml}" "${{ inputs.additional_args }}"
 
       - name: Linting some YAML files
         uses: actionsx/prettier@v3
-        if: (${{ inputs.additional_args != '' }}) && (${{ inputs.format }})
+        if: (${{ inputs.additional_args != '' }}) && (${{ inputs.format == true }})
         with:
           args: --write "**/*.{yaml,yml}" "${{ inputs.additional_args }}"
