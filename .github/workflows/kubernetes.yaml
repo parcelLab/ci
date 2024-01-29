@@ -272,6 +272,6 @@ jobs:
         with:
           package-name: ${{ github.event.deployment.payload.name }}
           package-type: container
-          min-versions-to-keep: "50"
+          min-versions-to-keep: "500"
           token: ${{ secrets.repoAccessToken }}
         continue-on-error: true
