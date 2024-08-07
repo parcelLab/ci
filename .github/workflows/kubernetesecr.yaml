@@ -105,6 +105,15 @@ on:
       sentryAuthToken:
         required: false
         description: Authentication token for Sentry
+      AWS_ACCESS_KEY_ID:
+        required: true
+        description: Access key ID for AWS credentials
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+        description: Secet for AWS access key ID
+      AWS_ACCOUNT_ID:
+        required: true
+        description: AWS Account ID
 jobs:
   kubernetes:
     environment: ${{ github.event.deployment.payload.env }}
