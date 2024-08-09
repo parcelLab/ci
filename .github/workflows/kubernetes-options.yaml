@@ -27,11 +27,6 @@ on:
         description: The repository within Github that holds the version file to deploy via GitOps
         default: parcelLab/deployment
         type: string
-      ecrImageRetentionCount:
-        required: false
-        description: The number of images to retain in the ECR repository
-        default: "500"
-        type: string
       preScript:
         required: false
         description: If provided, runs a script after repo checkout and before the docker image is built. Useful in case that you need to build a package outside of the docker image (and load the artifacts via copy).
@@ -51,6 +46,11 @@ on:
         required: false
         description: The username for the container registry
         default: parcellab-dev-bot
+        type: string
+      repository_kind:
+        required: true
+        description: The kind of repository (github or ecr)
+        default: "github"
         type: string
       runner:
         required: false
@@ -174,29 +174,14 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Login to Container Registry
+        if: inputs.repository_kind == 'github'
         uses: docker/login-action@v3
         with:
           registry: ${{ inputs.registryHostname }}
           username: ${{ inputs.registryUsername }}
           password: ${{ secrets.repoAccessToken }}
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-central-1
-      - name: Create ECR repository if it doesn't exist
-        run: |
-          aws ecr describe-repositories --repository-names ${{ github.event.deployment.payload.name }} || \
-          aws ecr create-repository --repository-name ${{ github.event.deployment.payload.name }}
-          LIFECYCLE_POLICY='{"rules":[{"rulePriority":1,"description":"Keep last ${ECR_IMAGE_RETENTION_COUNT} images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":${ECR_IMAGE_RETENTION_COUNT}},"action":{"type":"expire"}}]}'
-          aws ecr put-lifecycle-policy --repository-name ${{ github.event.deployment.payload.name }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
-        env:
-          ECR_IMAGE_RETENTION_COUNT: ${{ inputs.ecrImageRetentionCount }}
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
       - name: Build and push latest version to GitHub
+        if: inputs.repository_kind == 'github'
         uses: docker/build-push-action@v6
         with:
           build-args: |
@@ -215,6 +200,43 @@ jobs:
             ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:latest
             ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:${{ steps.vars.outputs.version }}
             ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:${{ github.sha }}
+      - name: Configure AWS credentials
+        if: inputs.repository_kind == 'ecr'
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
+      - name: Create ECR repository if it doesn't exist
+        if: inputs.repository_kind == 'ecr'
+        run: |
+          aws ecr describe-repositories --repository-names ${{ github.event.deployment.payload.name }} || \
+          aws ecr create-repository --repository-name ${{ github.event.deployment.payload.name }}
+          LIFECYCLE_POLICY='{"rules":[{"rulePriority":1,"description":"Keep last 500 images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":500,"action":{"type":"expire"}}]}'
+          aws ecr put-lifecycle-policy --repository-name ${{ github.event.deployment.payload.name }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
+        env:
+          ECR_IMAGE_RETENTION_COUNT: ${{ inputs.ecrImageRetentionCount }}
+      - name: Login to Amazon ECR
+        if: inputs.repository_kind == 'ecr'
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build and push latest version to ECR
+        if: inputs.repository_kind == 'ecr'
+        uses: docker/build-push-action@v6
+        with:
+          build-args: |
+            GITHUB_SHA=${{ github.sha }}
+            VERSION=${{ steps.vars.outputs.version }}
+            APP_NAME=${{ github.event.deployment.payload.name }}
+            ENVIRONMENT=${{ github.event.deployment.payload.env }}
+            NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
+          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
+          cache-to: type=inline
+          context: ${{ github.event.deployment.payload.container.context }}
+          file: ${{ github.event.deployment.payload.container.file }}
+          platforms: linux/amd64
+          push: true
+          tags: |
             ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:latest
             ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:${{ steps.vars.outputs.version }}
             ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:${{ github.sha }}
