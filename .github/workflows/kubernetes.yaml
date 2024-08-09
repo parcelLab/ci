@@ -1,4 +1,4 @@
-name: Reusable Kubernetes with ECR registry
+name: Reusable Kubernetes
 on:
   workflow_call:
     inputs:
