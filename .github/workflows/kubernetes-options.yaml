@@ -48,7 +48,7 @@ on:
         default: parcellab-dev-bot
         type: string
       repository_kind:
-        required: true
+        required: false
         description: The kind of repository (github or ecr)
         default: "github"
         type: string
@@ -214,8 +214,6 @@ jobs:
           aws ecr create-repository --repository-name ${{ github.event.deployment.payload.name }}
           LIFECYCLE_POLICY='{"rules":[{"rulePriority":1,"description":"Keep last 500 images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":500,"action":{"type":"expire"}}]}'
           aws ecr put-lifecycle-policy --repository-name ${{ github.event.deployment.payload.name }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
-        env:
-          ECR_IMAGE_RETENTION_COUNT: ${{ inputs.ecrImageRetentionCount }}
       - name: Login to Amazon ECR
         if: inputs.repository_kind == 'ecr'
         id: login-ecr
