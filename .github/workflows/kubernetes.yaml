@@ -1,4 +1,4 @@
-name: Reusable Kubernetes
+name: Reusable Kubernetes with ECR registry
 on:
   workflow_call:
     inputs:
@@ -105,6 +105,15 @@ on:
       sentryAuthToken:
         required: false
         description: Authentication token for Sentry
+      AWS_ACCESS_KEY_ID:
+        required: true
+        description: Access key ID for AWS credentials
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+        description: Secet for AWS access key ID
+      AWS_ACCOUNT_ID:
+        required: true
+        description: AWS Account ID
 jobs:
   kubernetes:
     environment: ${{ github.event.deployment.payload.env }}
@@ -160,13 +169,28 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Login to Container Registry
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ${{ inputs.registryHostname }}
           username: ${{ inputs.registryUsername }}
           password: ${{ secrets.repoAccessToken }}
-      - name: Build and push latest version
-        uses: docker/build-push-action@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
+      - name: Create ECR repository if it doesn't exist
+        run: |
+          aws ecr describe-repositories --repository-names ${{ github.event.deployment.payload.name }} || \
+          aws ecr create-repository --repository-name ${{ github.event.deployment.payload.name }}
+          LIFECYCLE_POLICY='{"rules":[{"rulePriority":1,"description":"Keep last 500 images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":500,"action":{"type":"expire"}}]}'
+          aws ecr put-lifecycle-policy --repository-name ${{ github.event.deployment.payload.name }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build and push latest version to repositories
+        uses: docker/build-push-action@v6
         with:
           build-args: |
             GITHUB_SHA=${{ github.sha }}
@@ -184,6 +208,9 @@ jobs:
             ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:latest
             ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:${{ steps.vars.outputs.version }}
             ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:latest
+            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:${{ steps.vars.outputs.version }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:${{ github.sha }}
       - name: Checkout ${{ inputs.deploymentRepoURL }} git repository
         uses: actions/checkout@v3
         with:
