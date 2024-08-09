@@ -1,4 +1,4 @@
-name: Reusable Kubernetes with ECR registry
+name: Reusable Kubernetes with option to push images to Github or ECR
 on:
   workflow_call:
     inputs:
