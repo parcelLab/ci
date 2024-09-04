@@ -6,6 +6,7 @@ on:
       APPLICATION_NAME:
         description: The name of the application
         required: true
+        type: string
     secrets:
       AWS_ACCESS_KEY_ID:
         required: true
