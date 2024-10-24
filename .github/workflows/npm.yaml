@@ -115,7 +115,9 @@ jobs:
       - name: Clear npm cache
         run: npm cache clean --force
       - name: Publish NPM package to Github
-        run: npm publish --access ${{ inputs.access }} --dry-run --verbose
+        run: |
+          pwd
+          npm publish --access ${{ inputs.access }} --dry-run --verbose
         env:
           NODE_AUTH_TOKEN: ${{ secrets.githubAuthToken }}
           NPM_GITHUB_TOKEN: ${{ secrets.githubAuthToken }} # To support configurations from .npmrc
