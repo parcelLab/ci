@@ -108,6 +108,12 @@ jobs:
         with:
           github_token: ${{ secrets.githubAuthToken }}
           branch: ${{ inputs.defaultBranch }}
+      - name: debug working dir
+        run: |
+          pwd
+          ls -la
+      - name: dry run npm package
+        run: npm pack --dry-run
       - name: Publish NPM package to Github
         run: npm publish --access ${{ inputs.access }}
         env:
