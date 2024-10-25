@@ -114,7 +114,7 @@ jobs:
         run: |
           pwd
           npm config set loglevel verbose
-          npm publish --access ${{ inputs.access }} --dry-run --verbose
+          npm publish --access ${{ inputs.access }} --verbose
         env:
           NODE_AUTH_TOKEN: ${{ secrets.githubAuthToken }}
           NPM_GITHUB_TOKEN: ${{ secrets.githubAuthToken }} # To support configurations from .npmrc
