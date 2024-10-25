@@ -73,6 +73,9 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
           registry-url: https://npm.pkg.github.com
           scope: ${{ inputs.scope }}
+      - if: inputs.cacheEnabled == false
+        name: Clear npm cache
+        run: npm cache clean --force
       - if: inputs.cacheEnabled
         name: Cache dependencies
         id: npm-cache
