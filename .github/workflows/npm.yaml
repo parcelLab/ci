@@ -73,7 +73,8 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
           registry-url: https://npm.pkg.github.com
           scope: ${{ inputs.scope }}
-      - name: Clear npm cache
+      - if: inputs.cacheEnabled == false
+        name: Clear npm cache
         run: npm cache clean --force
       - if: inputs.cacheEnabled
         name: Cache dependencies
@@ -111,10 +112,7 @@ jobs:
           github_token: ${{ secrets.githubAuthToken }}
           branch: ${{ inputs.defaultBranch }}
       - name: Publish NPM package to Github
-        run: |
-          pwd
-          npm config set loglevel verbose
-          npm publish --access ${{ inputs.access }} --verbose
+        run: npm publish --access ${{ inputs.access }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.githubAuthToken }}
           NPM_GITHUB_TOKEN: ${{ secrets.githubAuthToken }} # To support configurations from .npmrc
