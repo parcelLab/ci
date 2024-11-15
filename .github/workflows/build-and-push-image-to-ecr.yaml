@@ -7,6 +7,12 @@ on:
         description: The name of the application
         required: true
         type: string
+      artifact-name:
+        required: false
+        type: string
+      artifact-path:
+        required: false
+        type: string
     secrets:
       AWS_ACCESS_KEY_ID:
         required: true
@@ -19,6 +25,12 @@ jobs:
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v3
+      - name: Download build artifact
+        if: inputs.artifact-name != ''
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ inputs.artifact-path }}
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
