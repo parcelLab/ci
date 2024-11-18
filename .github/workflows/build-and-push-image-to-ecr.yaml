@@ -7,11 +7,15 @@ on:
         description: The name of the application
         required: true
         type: string
-      artifact-name:
+      artifactName:
         required: false
+        description: If provided, downloads a previously uploaded artifact (has to be in the same workflow). Both artifactPath and artifactName have to be passed.
+        default: ""
         type: string
-      artifact-path:
+      artifactPath:
         required: false
+        description: If provided, downloads a previously uploaded artifact (has to be in the same workflow). Both artifactPath and artifactName have to be passed.
+        default: ""
         type: string
     secrets:
       AWS_ACCESS_KEY_ID:
@@ -26,11 +30,11 @@ jobs:
       - name: Checkout current git repository
         uses: actions/checkout@v3
       - name: Download build artifact
-        if: inputs.artifact-name != ''
+        if: inputs.artifactPath != '' && inputs.artifactName != ''
         uses: actions/download-artifact@v3
         with:
-          name: ${{ inputs.artifact-name }}
-          path: ${{ inputs.artifact-path }}
+          name: ${{ inputs.artifactName }}
+          path: ${{ inputs.artifactPath }}
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
