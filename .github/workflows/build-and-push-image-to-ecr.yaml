@@ -33,8 +33,8 @@ jobs:
         if: inputs.artifactPath != '' && inputs.artifactName != ''
         uses: actions/download-artifact@v3
         with:
-          name: ${{ inputs.artifactName }}
           path: ${{ inputs.artifactPath }}
+          name: ${{ inputs.artifactName }}
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
