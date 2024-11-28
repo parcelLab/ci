@@ -11,6 +11,10 @@ on:
         description: Number of the current PR
         required: true
         type: number
+      GHA_TRIGGER_EVENT:
+        description: GitHub PR event that triggered the workflow
+        required: true
+        type: string
       artifactName:
         required: false
         description: If provided, downloads a previously uploaded artifact (has to be in the same workflow). Both artifactPath and artifactName have to be passed.
@@ -68,7 +72,7 @@ jobs:
             ${{ steps.login-ecr.outputs.registry }}/${{ inputs.APPLICATION_NAME }}:preview
             ${{ steps.login-ecr.outputs.registry }}/${{ inputs.APPLICATION_NAME }}:${{ github.event.pull_request.head.sha }}
   comment-pr:
-    if: ${{ github.event.action != 'synchronize' }}
+    if: ${{ inputs.GHA_TRIGGER_EVENT != 'synchronize' }}
     runs-on: ubuntu-latest
     steps:
       - name: Comment PR
