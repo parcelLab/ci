@@ -7,7 +7,10 @@ on:
         description: The name of the application
         required: true
         type: string
-<<<<<<< Updated upstream
+      PR_NUMBER:
+        description: Number of the current PR
+        required: true
+        type: number
       artifactName:
         required: false
         description: If provided, downloads a previously uploaded artifact (has to be in the same workflow). Both artifactPath and artifactName have to be passed.
@@ -18,11 +21,6 @@ on:
         description: If provided, downloads a previously uploaded artifact (has to be in the same workflow). Both artifactPath and artifactName have to be passed.
         default: ""
         type: string
-=======
-      PR_NUMBER:
-        required: true
-        type: number
->>>>>>> Stashed changes
     secrets:
       AWS_ACCESS_KEY_ID:
         required: true
