@@ -7,6 +7,10 @@ on:
         description: The name of the application
         required: true
         type: string
+      PR_NUMBER:
+        description: Number of the current PR
+        required: true
+        type: number
       artifactName:
         required: false
         description: If provided, downloads a previously uploaded artifact (has to be in the same workflow). Both artifactPath and artifactName have to be passed.
@@ -63,3 +67,13 @@ jobs:
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/${{ inputs.APPLICATION_NAME }}:preview
             ${{ steps.login-ecr.outputs.registry }}/${{ inputs.APPLICATION_NAME }}:${{ github.event.pull_request.head.sha }}
+  comment-pr:
+    if: contains(github.event.pull_request.labels.*.name, 'preview') && ${{ github.event.action != 'synchronize' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment PR
+        uses: thollander/actions-comment-pull-request@v3
+        with:
+          message: |
+            Preview URL: https://${{ inputs.APPLICATION_NAME }}-preview-${{ inputs.PR_NUMBER }}.staging.parcellab.dev
+            Preview Argo App: https://argocd.staging.parcellab.dev/applications/argocd/${{ inputs.APPLICATION_NAME }}-preview-${{ inputs.PR_NUMBER }}
