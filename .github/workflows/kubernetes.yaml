@@ -248,7 +248,7 @@ jobs:
         if: inputs.repository_kind == 'ecr'
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
-      - name: Build and push latest version to ECR
+      - name: Build and push primary image to ECR
         if: inputs.repository_kind == 'ecr'
         uses: docker/build-push-action@v6
         with:
@@ -268,6 +268,28 @@ jobs:
             ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:latest
             ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:${{ steps.vars.outputs.version }}
             ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:${{ github.sha }}
+          target: ${{ inputs.imageTargetPrimary }}
+      - name: Build and push additional image to ECR
+        if: inputs.repository_kind == 'ecr' && inputs.imageTargetAdditional != ''
+        uses: docker/build-push-action@v6
+        with:
+          build-args: |
+            GITHUB_SHA=${{ github.sha }}
+            VERSION=${{ steps.vars.outputs.version }}
+            APP_NAME=${{ github.event.deployment.payload.name }}
+            ENVIRONMENT=${{ github.event.deployment.payload.env }}
+            NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
+          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
+          cache-to: type=inline
+          context: ${{ github.event.deployment.payload.container.context }}
+          file: ${{ github.event.deployment.payload.container.file }}
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:latest
+            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:${{ steps.vars.outputs.version }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:${{ github.sha }}
+          target: ${{ inputs.imageTargetAdditional }}
       - name: Checkout ${{ inputs.deploymentRepoURL }} git repository
         uses: actions/checkout@v3
         with:
