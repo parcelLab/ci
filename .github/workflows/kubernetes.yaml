@@ -188,7 +188,7 @@ jobs:
           registry: ${{ inputs.registryHostname }}
           username: ${{ inputs.registryUsername }}
           password: ${{ secrets.repoAccessToken }}
-      - name: Build and push latest version to GitHub
+      - name: Build and push primary image to GitHub
         if: inputs.repository_kind == 'github'
         uses: docker/build-push-action@v6
         with:
@@ -209,7 +209,7 @@ jobs:
             ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:${{ steps.vars.outputs.version }}
             ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:${{ github.sha }}
           target: ${{ inputs.imageTargetPrimary }}
-      - name: Build and push latest version to GitHub
+      - name: Build and push additional image to GitHub
         if: inputs.repository_kind == 'github' && inputs.imageTargetAdditional != ''
         uses: docker/build-push-action@v6
         with:
