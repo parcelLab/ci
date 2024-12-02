@@ -226,9 +226,9 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:latest
-            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:${{ steps.vars.outputs.version }}
-            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:${{ github.sha }}
+            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ inputs.imageTargetAdditional }}:latest
+            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ inputs.imageTargetAdditional }}:${{ steps.vars.outputs.version }}
+            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ inputs.imageTargetAdditional }}:${{ github.sha }}
           target: ${{ inputs.imageTargetAdditional }}
       - name: Configure AWS credentials
         if: inputs.repository_kind == 'ecr'
