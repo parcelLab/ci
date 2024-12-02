@@ -27,6 +27,14 @@ on:
         description: The repository within Github that holds the version file to deploy via GitOps
         default: parcelLab/deployment
         type: string
+      imageTargetPrimary:
+        required: false
+        description: If provided, sets a target for primary image build
+        type: string
+      imageTargetAdditional:
+        required: false
+        description: If provided, sets a target for secondary image build
+        type: string
       preScript:
         required: false
         description: If provided, runs a script after repo checkout and before the docker image is built. Useful in case that you need to build a package outside of the docker image (and load the artifacts via copy).
@@ -200,6 +208,28 @@ jobs:
             ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:latest
             ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:${{ steps.vars.outputs.version }}
             ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:${{ github.sha }}
+          target: ${{ inputs.imageTargetPrimary }}
+      - name: Build and push latest version to GitHub
+        if: inputs.repository_kind == 'github' && inputs.imageTargetAdditional != ''
+        uses: docker/build-push-action@v6
+        with:
+          build-args: |
+            GITHUB_SHA=${{ github.sha }}
+            VERSION=${{ steps.vars.outputs.version }}
+            APP_NAME=${{ github.event.deployment.payload.name }}
+            ENVIRONMENT=${{ github.event.deployment.payload.env }}
+            NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
+          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
+          cache-to: type=inline
+          context: ${{ github.event.deployment.payload.container.context }}
+          file: ${{ github.event.deployment.payload.container.file }}
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:latest
+            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:${{ steps.vars.outputs.version }}
+            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:${{ github.sha }}
+          target: ${{ inputs.imageTargetAdditional }}
       - name: Configure AWS credentials
         if: inputs.repository_kind == 'ecr'
         uses: aws-actions/configure-aws-credentials@v2
