@@ -30,7 +30,7 @@ on:
       imageTargets:
         required: false
         description: If provided, sets targets for as many image builds as targets specified
-        type: string
+        type: array
       preScript:
         required: false
         description: If provided, runs a script after repo checkout and before the docker image is built. Useful in case that you need to build a package outside of the docker image (and load the artifacts via copy).
