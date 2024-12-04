@@ -299,7 +299,7 @@ jobs:
     needs: [parallel]
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
-      steps:
+    steps:
       - name: Checkout ${{ inputs.deploymentRepoURL }} git repository
         uses: actions/checkout@v3
         with:
