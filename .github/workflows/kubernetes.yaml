@@ -124,7 +124,7 @@ on:
         required: true
         description: AWS Account ID
 jobs:
-  kubernetes:
+  parallel:
     environment: ${{ github.event.deployment.payload.env }}
     # concurrency: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
@@ -155,6 +155,7 @@ jobs:
             # shellcheck disable=SC2086
             echo "channel-id=${{ inputs.slackChannelStaging }}" >> $GITHUB_OUTPUT
           fi
+
       - name: Start ${{ github.event.deployment.payload.name }} deployment
         uses: chrnorm/deployment-status@v2
         with:
@@ -294,6 +295,11 @@ jobs:
             ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:${{ steps.vars.outputs.version }}
             ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:${{ github.sha }}
           target: ${{ matrix.containerfile_targets }}
+  consecutive:
+    needs: [parallel]
+    environment: ${{ github.event.deployment.payload.env }}
+    runs-on: ${{ inputs.runner }}
+      steps:
       - name: Checkout ${{ inputs.deploymentRepoURL }} git repository
         uses: actions/checkout@v3
         with:
@@ -306,19 +312,19 @@ jobs:
         name: Update ${{ github.event.deployment.payload.name }} version for ${{ github.event.deployment.environment }} values
         uses: mikefarah/yq@v4.30.8
         with:
-          cmd: yq '(.${{ github.event.deployment.payload.chart }}.image.tag = "${{ steps.vars.outputs.version }}")' -i remote/${{ inputs.deploymentRepoPath }}/${{ github.event.deployment.payload.namespace }}/${{ github.event.deployment.payload.env }}/${{ github.event.deployment.payload.name }}/${{ inputs.versionFilePath }}
+          cmd: yq '(.${{ github.event.deployment.payload.chart }}.image.tag = "${{ needs.parallel.outputs.version }}")' -i remote/${{ inputs.deploymentRepoPath }}/${{ github.event.deployment.payload.namespace }}/${{ github.event.deployment.payload.env }}/${{ github.event.deployment.payload.name }}/${{ inputs.versionFilePath }}
       - if: github.event.deployment.payload.schemaVersion == 'v2'
         name: Update ${{ github.event.deployment.payload.name }} version for ${{ github.event.deployment.environment }} values
         uses: mikefarah/yq@v4.30.8
         with:
-          cmd: yq '(.${{ github.event.deployment.payload.kubernetes.versionKey }} = "${{ steps.vars.outputs.version }}")' -i remote/${{ inputs.deploymentRepoPath }}/${{ github.event.deployment.payload.kubernetes.namespace }}/${{ github.event.deployment.payload.env }}/${{ github.event.deployment.payload.name }}/${{ inputs.versionFilePath }}
+          cmd: yq '(.${{ github.event.deployment.payload.kubernetes.versionKey }} = "${{ needs.parallel.outputs.version }}")' -i remote/${{ inputs.deploymentRepoPath }}/${{ github.event.deployment.payload.kubernetes.namespace }}/${{ github.event.deployment.payload.env }}/${{ github.event.deployment.payload.name }}/${{ inputs.versionFilePath }}
       - name: Commit deployment file
         run: |
           cd remote
           git config --global user.email "${{ inputs.botEmail }}"
           git config --global user.name "${{ inputs.registryUsername }}"
           git add .
-          git commit --allow-empty -m "chore(${{ github.event.deployment.payload.name }}): set ${{ github.event.deployment.payload.env }} version to ${{ steps.vars.outputs.version }}"
+          git commit --allow-empty -m "chore(${{ github.event.deployment.payload.name }}): set ${{ github.event.deployment.payload.env }} version to ${{ needs.parallel.outputs.version }}"
       - name: Push changes to ${{ inputs.deploymentRepoURL }} git repository
         uses: ad-m/github-push-action@0fafdd62b84042d49ec0cb92d9cac7f7ce4ec79e
         with:
@@ -345,14 +351,14 @@ jobs:
           environment: ${{ github.event.deployment.payload.env }}
           state: "failure"
           token: ${{ github.token }}
-      - if: success() && steps.vars.outputs.channel-id != ''
+      - if: success() && needs.parallel.outputs.channel-id != ''
         name: Notify ${{ github.event.deployment.payload.name }} deployment success
         continue-on-error: true
         uses: darioblanco/slack-deployment@main
         env:
           SLACK_BOT_TOKEN: ${{ secrets.slackBotToken }}
         with:
-          channel_id: ${{ steps.vars.outputs.channel-id }}
+          channel_id: ${{ needs.parallel.outputs.channel-id }}
           deployment_description: ${{ github.event.deployment.payload.description == null && 'No description' || github.event.deployment.payload.description }}
           deployment_name: ${{ github.event.deployment.payload.name == null && 'unknown' || github.event.deployment.payload.name }}
           environment: ${{ github.event.deployment.payload.env == null && 'unknown' || github.event.deployment.payload.env }}
@@ -363,7 +369,7 @@ jobs:
           sha: ${{ github.sha }}
           status_url: ${{ github.event.deployment.payload.statusUrl == null && 'https://github.com' || github.event.deployment.payload.statusUrl }}
           url: ${{ github.event.deployment.payload.url == null && 'https://github.com' || github.event.deployment.payload.url }}
-          version: ${{ steps.vars.outputs.version }}
+          version: ${{ needs.parallel.outputs.version }}
       - if: success() && inputs.sentryOrg != '' && inputs.sentryProject != ''
         name: Create Sentry release
         uses: getsentry/action-release@v1
@@ -375,7 +381,7 @@ jobs:
         with:
           environment: ${{ inputs.sentryEnvironment != '' && inputs.sentryEnvironment || github.event.deployment.payload.env }}
           set_commits: skip
-          version: ${{ steps.vars.outputs.version }}
+          version: ${{ needs.parallel.outputs.version }}
         continue-on-error: true
       - name: Clean up images
         uses: actions/delete-package-versions@v4
