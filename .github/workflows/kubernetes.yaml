@@ -126,7 +126,7 @@ on:
 jobs:
   kubernetes:
     environment: ${{ github.event.deployment.payload.env }}
-    concurrency: ${{ github.event.deployment.payload.env }}
+    concurrency: ${{ github.event.deployment.payload.env }}-matrix
     runs-on: ${{ inputs.runner }}
     strategy:
       matrix:
