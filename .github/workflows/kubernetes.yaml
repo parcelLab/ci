@@ -125,12 +125,16 @@ on:
         description: AWS Account ID
 jobs:
   parallel:
+    needs: [load-deployment-vars]
     environment: ${{ github.event.deployment.payload.env }}
     # concurrency: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
     strategy:
       matrix:
         containerfile_targets: ${{ fromJson(inputs.imageTargets) }}
+    outputs:
+      channel-id: ${{ steps.vars.outputs.channel-id }}
+      version: ${{ steps.vars.outputs.version }}
     steps:
       - name: Load deployment variables
         id: vars
@@ -155,7 +159,6 @@ jobs:
             # shellcheck disable=SC2086
             echo "channel-id=${{ inputs.slackChannelStaging }}" >> $GITHUB_OUTPUT
           fi
-
       - name: Start ${{ github.event.deployment.payload.name }} deployment
         uses: chrnorm/deployment-status@v2
         with:
