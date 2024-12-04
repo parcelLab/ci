@@ -125,7 +125,6 @@ on:
         description: AWS Account ID
 jobs:
   parallel:
-    needs: [load-deployment-vars]
     environment: ${{ github.event.deployment.payload.env }}
     # concurrency: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
