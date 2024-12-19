@@ -190,7 +190,7 @@ jobs:
           registry: ${{ inputs.registryHostname }}
           username: ${{ inputs.registryUsername }}
           password: ${{ secrets.repoAccessToken }}
-      - name: Build and push image to GitHub
+      - name: Build image
         if: inputs.repository_kind == 'github' && matrix.containerfile_targets == ''
         uses: docker/build-push-action@v6
         with:
@@ -205,7 +205,6 @@ jobs:
           context: ${{ github.event.deployment.payload.container.context }}
           file: ${{ github.event.deployment.payload.container.file }}
           platforms: linux/amd64
-          push: true
           tags: |
             ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:latest
             ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:${{ steps.vars.outputs.version }}
@@ -215,7 +214,12 @@ jobs:
         uses: crazy-max/ghaction-container-scan@v3
         with:
           image: ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:latest
-      - name: Build and push ${{ matrix.containerfile_targets }} image to GitHub
+          dockerfile: Containerfile
+      - name: Push ${{ matrix.containerfile_targets }} image to GitHub
+        if: inputs.repository_kind == 'github' && matrix.containerfile_targets == ''
+        run: |
+          docker push -a ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
+      - name: Build ${{ matrix.containerfile_targets }} image
         if: inputs.repository_kind == 'github' && matrix.containerfile_targets != ''
         uses: docker/build-push-action@v6
         with:
@@ -230,17 +234,21 @@ jobs:
           context: ${{ github.event.deployment.payload.container.context }}
           file: ${{ github.event.deployment.payload.container.file }}
           platforms: linux/amd64
-          push: true
           tags: |
             ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:latest
             ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:${{ steps.vars.outputs.version }}
             ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:${{ github.sha }}
           target: ${{ matrix.containerfile_targets }}
       - name: Scan for vulnerabilities
-        if: inputs.repository_kind == 'github' && matrix.containerfile_targets == ''
+        if: inputs.repository_kind == 'github' && matrix.containerfile_targets != ''
         uses: crazy-max/ghaction-container-scan@v3
         with:
           image: ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:latest
+          dockerfile: Containerfile
+      - name: Push ${{ matrix.containerfile_targets }} image to ECR
+        if: inputs.repository_kind == 'github' && matrix.containerfile_targets != ''
+        run: |
+          docker push -a ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}
       - name: Configure AWS credentials
         if: inputs.repository_kind == 'ecr'
         uses: aws-actions/configure-aws-credentials@v2
@@ -266,7 +274,7 @@ jobs:
         if: inputs.repository_kind == 'ecr'
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
-      - name: Build and push image to ECR
+      - name: Build image
         if: inputs.repository_kind == 'ecr' && matrix.containerfile_targets == ''
         uses: docker/build-push-action@v6
         with:
@@ -281,7 +289,6 @@ jobs:
           context: ${{ github.event.deployment.payload.container.context }}
           file: ${{ github.event.deployment.payload.container.file }}
           platforms: linux/amd64
-          push: true
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:latest
             ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:${{ steps.vars.outputs.version }}
@@ -291,7 +298,12 @@ jobs:
         uses: crazy-max/ghaction-container-scan@v3
         with:
           image: ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:latest
-      - name: Build and push ${{ matrix.containerfile_targets }} image to ECR
+          dockerfile: Containerfile
+      - name: Push image to ECR
+        if: inputs.repository_kind == 'ecr' && matrix.containerfile_targets == ''
+        run: |
+          docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}
+      - name: Build ${{ matrix.containerfile_targets }} image
         if: inputs.repository_kind == 'ecr' && matrix.containerfile_targets != ''
         uses: docker/build-push-action@v6
         with:
@@ -306,7 +318,6 @@ jobs:
           context: ${{ github.event.deployment.payload.container.context }}
           file: ${{ github.event.deployment.payload.container.file }}
           platforms: linux/amd64
-          push: true
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:latest
             ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:${{ steps.vars.outputs.version }}
@@ -317,6 +328,11 @@ jobs:
         uses: crazy-max/ghaction-container-scan@v3
         with:
           image: ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:latest
+          dockerfile: Containerfile
+      - name: Push ${{ matrix.containerfile_targets }} image to ECR
+        if: inputs.repository_kind == 'ecr' && matrix.containerfile_targets != ''
+        run: |
+          docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}
   consecutive:
     needs: [parallel]
     environment: ${{ github.event.deployment.payload.env }}
