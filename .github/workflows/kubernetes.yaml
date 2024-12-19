@@ -128,9 +128,9 @@ jobs:
     environment: ${{ github.event.deployment.payload.env }}
     # concurrency: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
-    strategy:
-      matrix:
-        containerfile_targets: ${{ fromJson(inputs.imageTargets) }}
+    # strategy:
+    #   matrix:
+    #     containerfile_targets: ${{ fromJson(inputs.imageTargets) }}
     outputs:
       channel-id: ${{ steps.vars.outputs.channel-id }}
       version: ${{ steps.vars.outputs.version }}
