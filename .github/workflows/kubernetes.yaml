@@ -203,6 +203,7 @@ jobs:
           cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
           cache-to: type=inline
           context: ${{ github.event.deployment.payload.container.context }}
+          load: true
           file: ${{ github.event.deployment.payload.container.file }}
           platforms: linux/amd64
           tags: |
@@ -232,6 +233,7 @@ jobs:
           cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
           cache-to: type=inline
           context: ${{ github.event.deployment.payload.container.context }}
+          load: true
           file: ${{ github.event.deployment.payload.container.file }}
           platforms: linux/amd64
           tags: |
@@ -287,6 +289,7 @@ jobs:
           cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
           cache-to: type=inline
           context: ${{ github.event.deployment.payload.container.context }}
+          load: true
           file: ${{ github.event.deployment.payload.container.file }}
           platforms: linux/amd64
           tags: |
@@ -316,6 +319,7 @@ jobs:
           cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
           cache-to: type=inline
           context: ${{ github.event.deployment.payload.container.context }}
+          load: true
           file: ${{ github.event.deployment.payload.container.file }}
           platforms: linux/amd64
           tags: |
