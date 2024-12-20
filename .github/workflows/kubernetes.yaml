@@ -123,17 +123,19 @@ on:
       AWS_ACCOUNT_ID:
         required: true
         description: AWS Account ID
+
+env:
+  IMAGE_SCAN_SEVERITY: LOW
+  IMAGE_SCAN_SEVERITY_THRESHOLD: CRITICAL
+  IMAGE_SCAN_ANNOTATIONS: true
+
 jobs:
-  parallel:
+  initialize:
     environment: ${{ github.event.deployment.payload.env }}
-    # concurrency: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
-    # strategy:
-    #   matrix:
-    #     containerfile_targets: ${{ fromJson(inputs.imageTargets) }}
     outputs:
-      channel-id: ${{ steps.vars.outputs.channel-id }}
-      version: ${{ steps.vars.outputs.version }}
+      channel-id: ${{ needs.initialize.outputs.channel-id }}
+      version: ${{ needs.initialize.outputs.version }}
     steps:
       - name: Load deployment variables
         id: vars
@@ -166,6 +168,146 @@ jobs:
           environment: ${{ github.event.deployment.payload.env }}
           state: "in_progress"
           token: ${{ github.token }}
+
+  image-build-github-single:
+    if: inputs.repository_kind == 'github' && matrix.containerfile_targets == ''
+    needs: [initialize]
+    environment: ${{ github.event.deployment.payload.env }}
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - name: Checkout current git repository
+        uses: actions/checkout@v3
+      - if: inputs.preScript != ''
+        name: Run script before the docker image is built
+        run: |
+          echo "Run '${{ inputs.preScript }}'"
+          ${{ inputs.preScript }}
+        env:
+          NPM_GITHUB_TOKEN: ${{ secrets.npmGithubReadToken }}
+      - if: inputs.artifactPath != '' && inputs.artifactName != ''
+        name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifactName }}
+          path: ${{ inputs.artifactPath }}
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ inputs.registryHostname }}
+          username: ${{ inputs.registryUsername }}
+          password: ${{ secrets.repoAccessToken }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          build-args: |
+            GITHUB_SHA=${{ github.sha }}
+            VERSION=${{ needs.initialize.outputs.version }}
+            APP_NAME=${{ github.event.deployment.payload.name }}
+            ENVIRONMENT=${{ github.event.deployment.payload.env }}
+            NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
+          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
+          cache-to: type=inline
+          context: ${{ github.event.deployment.payload.container.context }}
+          load: true
+          file: ${{ github.event.deployment.payload.container.file }}
+          platforms: linux/amd64
+          tags: |
+            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:latest
+            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:${{ needs.initialize.outputs.version }}
+            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:${{ github.sha }}
+      - name: Scan for vulnerabilities
+        uses: crazy-max/ghaction-container-scan@v3
+        with:
+          image: ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:latest
+          dockerfile: Containerfile
+          severity: ${{ env.IMAGE_SCAN_SEVERITY }}
+          severity_threshold: ${{ env.IMAGE_SCAN_SEVERITY_THRESHOLD }}
+          annotations: ${{ env.IMAGE_SCAN_ANNOTATIONS }}
+      - name: Push ${{ matrix.containerfile_targets }} image to GitHub
+        run: |
+          docker push -a ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
+
+  image-build-ecr-single:
+    if: inputs.repository_kind == 'ecr' && matrix.containerfile_targets == ''
+    needs: [initialize]
+    environment: ${{ github.event.deployment.payload.env }}
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - if: inputs.preScript != ''
+        name: Run script before the docker image is built
+        run: |
+          echo "Run '${{ inputs.preScript }}'"
+          ${{ inputs.preScript }}
+        env:
+          NPM_GITHUB_TOKEN: ${{ secrets.npmGithubReadToken }}
+      - if: inputs.artifactPath != '' && inputs.artifactName != ''
+        name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifactName }}
+          path: ${{ inputs.artifactPath }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Configure AWS credentials
+        if: inputs.repository_kind == 'ecr'
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
+      - name: Create ECR repository if it doesn't exist
+        run: |
+          aws ecr describe-repositories --repository-names ${{ github.event.deployment.payload.name }} || \
+          aws ecr create-repository --repository-name ${{ github.event.deployment.payload.name }}
+          LIFECYCLE_POLICY='{"rules":[{"rulePriority":1,"description":"Keep last 500 images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":500},"action":{"type":"expire"}}]}'
+          aws ecr put-lifecycle-policy --repository-name ${{ github.event.deployment.payload.name }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          build-args: |
+            GITHUB_SHA=${{ github.sha }}
+            VERSION=${{ needs.initialize.outputs.version }}
+            APP_NAME=${{ github.event.deployment.payload.name }}
+            ENVIRONMENT=${{ github.event.deployment.payload.env }}
+            NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
+          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
+          cache-to: type=inline
+          context: ${{ github.event.deployment.payload.container.context }}
+          load: true
+          file: ${{ github.event.deployment.payload.container.file }}
+          platforms: linux/amd64
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:latest
+            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:${{ needs.initialize.outputs.version }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:${{ github.sha }}
+      - name: Scan for vulnerabilities
+        if: inputs.repository_kind == 'ecr'
+        uses: crazy-max/ghaction-container-scan@v3
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:latest
+          dockerfile: Containerfile
+          severity: ${{ env.IMAGE_SCAN_SEVERITY }}
+          severity_threshold: ${{ env.IMAGE_SCAN_SEVERITY_THRESHOLD }}
+          annotations: ${{ env.IMAGE_SCAN_ANNOTATIONS }}
+      - name: Push image to ECR
+        if: inputs.repository_kind == 'ecr'
+        run: |
+          docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}
+
+  image-build-github-matrix:
+    if: inputs.repository_kind == 'github' && matrix.containerfile_targets != ''
+    needs: [initialize]
+    environment: ${{ github.event.deployment.payload.env }}
+    runs-on: ${{ inputs.runner }}
+    strategy:
+      matrix:
+        containerfile_targets: ${{ fromJson(inputs.imageTargets) }}
+    steps:
       - name: Checkout current git repository
         uses: actions/checkout@v3
       - if: inputs.preScript != ''
@@ -184,49 +326,17 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Login to Container Registry
-        if: inputs.repository_kind == 'github'
         uses: docker/login-action@v3
         with:
           registry: ${{ inputs.registryHostname }}
           username: ${{ inputs.registryUsername }}
           password: ${{ secrets.repoAccessToken }}
-      - name: Build image
-        if: inputs.repository_kind == 'github' && matrix.containerfile_targets == ''
-        uses: docker/build-push-action@v6
-        with:
-          build-args: |
-            GITHUB_SHA=${{ github.sha }}
-            VERSION=${{ steps.vars.outputs.version }}
-            APP_NAME=${{ github.event.deployment.payload.name }}
-            ENVIRONMENT=${{ github.event.deployment.payload.env }}
-            NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
-          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
-          cache-to: type=inline
-          context: ${{ github.event.deployment.payload.container.context }}
-          load: true
-          file: ${{ github.event.deployment.payload.container.file }}
-          platforms: linux/amd64
-          tags: |
-            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:latest
-            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:${{ steps.vars.outputs.version }}
-            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:${{ github.sha }}
-      - name: Scan for vulnerabilities
-        if: inputs.repository_kind == 'github' && matrix.containerfile_targets == ''
-        uses: crazy-max/ghaction-container-scan@v3
-        with:
-          image: ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:latest
-          dockerfile: Containerfile
-      - name: Push ${{ matrix.containerfile_targets }} image to GitHub
-        if: inputs.repository_kind == 'github' && matrix.containerfile_targets == ''
-        run: |
-          docker push -a ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
       - name: Build ${{ matrix.containerfile_targets }} image
-        if: inputs.repository_kind == 'github' && matrix.containerfile_targets != ''
         uses: docker/build-push-action@v6
         with:
           build-args: |
             GITHUB_SHA=${{ github.sha }}
-            VERSION=${{ steps.vars.outputs.version }}
+            VERSION=${{ needs.initialize.outputs.version }}
             APP_NAME=${{ github.event.deployment.payload.name }}
             ENVIRONMENT=${{ github.event.deployment.payload.env }}
             NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
@@ -238,81 +348,68 @@ jobs:
           platforms: linux/amd64
           tags: |
             ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:latest
-            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:${{ steps.vars.outputs.version }}
+            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:${{ needs.initialize.outputs.version }}
             ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:${{ github.sha }}
           target: ${{ matrix.containerfile_targets }}
       - name: Scan for vulnerabilities
-        if: inputs.repository_kind == 'github' && matrix.containerfile_targets != ''
         uses: crazy-max/ghaction-container-scan@v3
         with:
           image: ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:latest
           dockerfile: Containerfile
+          severity: ${{ env.IMAGE_SCAN_SEVERITY }}
+          severity_threshold: ${{ env.IMAGE_SCAN_SEVERITY_THRESHOLD }}
+          annotations: ${{ env.IMAGE_SCAN_ANNOTATIONS }}
       - name: Push ${{ matrix.containerfile_targets }} image to ECR
-        if: inputs.repository_kind == 'github' && matrix.containerfile_targets != ''
         run: |
           docker push -a ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}
+
+  image-build-ecr-matrix:
+    if: inputs.repository_kind == 'ecr' && matrix.containerfile_targets != ''
+    needs: [initialize]
+    environment: ${{ github.event.deployment.payload.env }}
+    runs-on: ${{ inputs.runner }}
+    strategy:
+      matrix:
+        containerfile_targets: ${{ fromJson(inputs.imageTargets) }}
+    steps:
+      - name: Checkout current git repository
+        uses: actions/checkout@v3
+      - if: inputs.preScript != ''
+        name: Run script before the docker image is built
+        run: |
+          echo "Run '${{ inputs.preScript }}'"
+          ${{ inputs.preScript }}
+        env:
+          NPM_GITHUB_TOKEN: ${{ secrets.npmGithubReadToken }}
+      - if: inputs.artifactPath != '' && inputs.artifactName != ''
+        name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifactName }}
+          path: ${{ inputs.artifactPath }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
       - name: Configure AWS credentials
-        if: inputs.repository_kind == 'ecr'
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-central-1
-      - name: Create ECR repository if it doesn't exist
-        if: inputs.repository_kind == 'ecr' && matrix.containerfile_targets == ''
-        run: |
-          aws ecr describe-repositories --repository-names ${{ github.event.deployment.payload.name }} || \
-          aws ecr create-repository --repository-name ${{ github.event.deployment.payload.name }}
-          LIFECYCLE_POLICY='{"rules":[{"rulePriority":1,"description":"Keep last 500 images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":500},"action":{"type":"expire"}}]}'
-          aws ecr put-lifecycle-policy --repository-name ${{ github.event.deployment.payload.name }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
       - name: Create ${{ matrix.containerfile_targets }} ECR repository if it doesn't exist
-        if: inputs.repository_kind == 'ecr' && matrix.containerfile_targets != ''
         run: |
           aws ecr describe-repositories --repository-names ${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }} || \
           aws ecr create-repository --repository-name ${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}
           LIFECYCLE_POLICY='{"rules":[{"rulePriority":1,"description":"Keep last 500 images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":500},"action":{"type":"expire"}}]}'
           aws ecr put-lifecycle-policy --repository-name ${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
       - name: Login to Amazon ECR
-        if: inputs.repository_kind == 'ecr'
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
-      - name: Build image
-        if: inputs.repository_kind == 'ecr' && matrix.containerfile_targets == ''
-        uses: docker/build-push-action@v6
-        with:
-          build-args: |
-            GITHUB_SHA=${{ github.sha }}
-            VERSION=${{ steps.vars.outputs.version }}
-            APP_NAME=${{ github.event.deployment.payload.name }}
-            ENVIRONMENT=${{ github.event.deployment.payload.env }}
-            NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
-          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
-          cache-to: type=inline
-          context: ${{ github.event.deployment.payload.container.context }}
-          load: true
-          file: ${{ github.event.deployment.payload.container.file }}
-          platforms: linux/amd64
-          tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:latest
-            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:${{ steps.vars.outputs.version }}
-            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:${{ github.sha }}
-      - name: Scan for vulnerabilities
-        if: inputs.repository_kind == 'ecr' && matrix.containerfile_targets == ''
-        uses: crazy-max/ghaction-container-scan@v3
-        with:
-          image: ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:latest
-          dockerfile: Containerfile
-      - name: Push image to ECR
-        if: inputs.repository_kind == 'ecr' && matrix.containerfile_targets == ''
-        run: |
-          docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}
       - name: Build ${{ matrix.containerfile_targets }} image
-        if: inputs.repository_kind == 'ecr' && matrix.containerfile_targets != ''
         uses: docker/build-push-action@v6
         with:
           build-args: |
             GITHUB_SHA=${{ github.sha }}
-            VERSION=${{ steps.vars.outputs.version }}
+            VERSION=${{ needs.initialize.outputs.version }}
             APP_NAME=${{ github.event.deployment.payload.name }}
             ENVIRONMENT=${{ github.event.deployment.payload.env }}
             NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
@@ -324,21 +421,23 @@ jobs:
           platforms: linux/amd64
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:latest
-            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:${{ steps.vars.outputs.version }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:${{ needs.initialize.outputs.version }}
             ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:${{ github.sha }}
           target: ${{ matrix.containerfile_targets }}
       - name: Scan for vulnerabilities
-        if: inputs.repository_kind == 'ecr' && matrix.containerfile_targets != ''
         uses: crazy-max/ghaction-container-scan@v3
         with:
           image: ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:latest
           dockerfile: Containerfile
+          severity: ${{ env.IMAGE_SCAN_SEVERITY }}
+          severity_threshold: ${{ env.IMAGE_SCAN_SEVERITY_THRESHOLD }}
+          annotations: ${{ env.IMAGE_SCAN_ANNOTATIONS }}
       - name: Push ${{ matrix.containerfile_targets }} image to ECR
-        if: inputs.repository_kind == 'ecr' && matrix.containerfile_targets != ''
         run: |
           docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}
-  consecutive:
-    needs: [parallel]
+
+  commit:
+    needs: [initialize]
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
     steps:
@@ -354,19 +453,19 @@ jobs:
         name: Update ${{ github.event.deployment.payload.name }} version for ${{ github.event.deployment.environment }} values
         uses: mikefarah/yq@v4.30.8
         with:
-          cmd: yq '(.${{ github.event.deployment.payload.chart }}.image.tag = "${{ needs.parallel.outputs.version }}")' -i remote/${{ inputs.deploymentRepoPath }}/${{ github.event.deployment.payload.namespace }}/${{ github.event.deployment.payload.env }}/${{ github.event.deployment.payload.name }}/${{ inputs.versionFilePath }}
+          cmd: yq '(.${{ github.event.deployment.payload.chart }}.image.tag = "${{ needs.initialize.outputs.version }}")' -i remote/${{ inputs.deploymentRepoPath }}/${{ github.event.deployment.payload.namespace }}/${{ github.event.deployment.payload.env }}/${{ github.event.deployment.payload.name }}/${{ inputs.versionFilePath }}
       - if: github.event.deployment.payload.schemaVersion == 'v2'
         name: Update ${{ github.event.deployment.payload.name }} version for ${{ github.event.deployment.environment }} values
         uses: mikefarah/yq@v4.30.8
         with:
-          cmd: yq '(.${{ github.event.deployment.payload.kubernetes.versionKey }} = "${{ needs.parallel.outputs.version }}")' -i remote/${{ inputs.deploymentRepoPath }}/${{ github.event.deployment.payload.kubernetes.namespace }}/${{ github.event.deployment.payload.env }}/${{ github.event.deployment.payload.name }}/${{ inputs.versionFilePath }}
+          cmd: yq '(.${{ github.event.deployment.payload.kubernetes.versionKey }} = "${{ needs.initialize.outputs.version }}")' -i remote/${{ inputs.deploymentRepoPath }}/${{ github.event.deployment.payload.kubernetes.namespace }}/${{ github.event.deployment.payload.env }}/${{ github.event.deployment.payload.name }}/${{ inputs.versionFilePath }}
       - name: Commit deployment file
         run: |
           cd remote
           git config --global user.email "${{ inputs.botEmail }}"
           git config --global user.name "${{ inputs.registryUsername }}"
           git add .
-          git commit --allow-empty -m "chore(${{ github.event.deployment.payload.name }}): set ${{ github.event.deployment.payload.env }} version to ${{ needs.parallel.outputs.version }}"
+          git commit --allow-empty -m "chore(${{ github.event.deployment.payload.name }}): set ${{ github.event.deployment.payload.env }} version to ${{ needs.initialize.outputs.version }}"
       - name: Push changes to ${{ inputs.deploymentRepoURL }} git repository
         uses: ad-m/github-push-action@0fafdd62b84042d49ec0cb92d9cac7f7ce4ec79e
         with:
@@ -393,14 +492,14 @@ jobs:
           environment: ${{ github.event.deployment.payload.env }}
           state: "failure"
           token: ${{ github.token }}
-      - if: success() && needs.parallel.outputs.channel-id != ''
+      - if: success() && needs.initialize.outputs.channel-id != ''
         name: Notify ${{ github.event.deployment.payload.name }} deployment success
         continue-on-error: true
         uses: darioblanco/slack-deployment@main
         env:
           SLACK_BOT_TOKEN: ${{ secrets.slackBotToken }}
         with:
-          channel_id: ${{ needs.parallel.outputs.channel-id }}
+          channel_id: ${{ needs.initialize.outputs.channel-id }}
           deployment_description: ${{ github.event.deployment.payload.description == null && 'No description' || github.event.deployment.payload.description }}
           deployment_name: ${{ github.event.deployment.payload.name == null && 'unknown' || github.event.deployment.payload.name }}
           environment: ${{ github.event.deployment.payload.env == null && 'unknown' || github.event.deployment.payload.env }}
@@ -411,7 +510,7 @@ jobs:
           sha: ${{ github.sha }}
           status_url: ${{ github.event.deployment.payload.statusUrl == null && 'https://github.com' || github.event.deployment.payload.statusUrl }}
           url: ${{ github.event.deployment.payload.url == null && 'https://github.com' || github.event.deployment.payload.url }}
-          version: ${{ needs.parallel.outputs.version }}
+          version: ${{ needs.initialize.outputs.version }}
       - if: success() && inputs.sentryOrg != '' && inputs.sentryProject != ''
         name: Create Sentry release
         uses: getsentry/action-release@v1
@@ -423,7 +522,7 @@ jobs:
         with:
           environment: ${{ inputs.sentryEnvironment != '' && inputs.sentryEnvironment || github.event.deployment.payload.env }}
           set_commits: skip
-          version: ${{ needs.parallel.outputs.version }}
+          version: ${{ needs.initialize.outputs.version }}
         continue-on-error: true
       - name: Clean up images
         uses: actions/delete-package-versions@v4
