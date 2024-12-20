@@ -30,6 +30,7 @@ on:
       imageTargets:
         required: false
         description: If provided, sets targets for as many image builds as targets specified
+        default: ""
         type: string
       preScript:
         required: false
@@ -170,7 +171,7 @@ jobs:
           token: ${{ github.token }}
 
   image-build-github-single:
-    if: inputs.repository_kind == 'github' && fromJson(inputs.imageTargets) == ''
+    if: inputs.repository_kind == 'github' && inputs.imageTargets == ''
     needs: [initialize]
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
@@ -230,7 +231,7 @@ jobs:
           docker push -a ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
 
   image-build-ecr-single:
-    if: inputs.repository_kind == 'ecr' && fromJson(inputs.imageTargets) == ''
+    if: inputs.repository_kind == 'ecr' && inputs.imageTargets == ''
     needs: [initialize]
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
@@ -300,7 +301,7 @@ jobs:
           docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}
 
   image-build-github-matrix:
-    if: inputs.repository_kind == 'github' && fromJson(inputs.imageTargets) != ''
+    if: inputs.repository_kind == 'github' && inputs.imageTargets != ''
     needs: [initialize]
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
@@ -364,7 +365,7 @@ jobs:
           docker push -a ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}
 
   image-build-ecr-matrix:
-    if: inputs.repository_kind == 'ecr' && fromJson(inputs.imageTargets) != ''
+    if: inputs.repository_kind == 'ecr' && inputs.imageTargets != ''
     needs: [initialize]
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
