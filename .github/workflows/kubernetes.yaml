@@ -236,6 +236,8 @@ jobs:
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
     steps:
+      - name: Checkout current git repository
+        uses: actions/checkout@v3
       - if: inputs.preScript != ''
         name: Run script before the docker image is built
         run: |
