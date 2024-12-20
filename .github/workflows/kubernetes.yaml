@@ -135,8 +135,8 @@ jobs:
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
     outputs:
-      channel-id: ${{ needs.initialize.outputs.channel-id }}
-      version: ${{ needs.initialize.outputs.version }}
+      channel-id: ${{ steps.vars.outputs.channel-id }}
+      version: ${{ steps.vars.outputs.version }}
     steps:
       - name: Load deployment variables
         id: vars
