@@ -226,7 +226,7 @@ jobs:
           severity: ${{ env.IMAGE_SCAN_SEVERITY }}
           severity_threshold: ${{ env.IMAGE_SCAN_SEVERITY_THRESHOLD }}
           annotations: ${{ env.IMAGE_SCAN_ANNOTATIONS }}
-      - name: Push ${{ matrix.containerfile_targets }} image to GitHub
+      - name: Push image to GitHub
         run: |
           docker push -a ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
 
