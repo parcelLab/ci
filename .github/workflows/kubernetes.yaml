@@ -27,6 +27,10 @@ on:
         description: The repository within Github that holds the version file to deploy via GitOps
         default: parcelLab/deployment
         type: string
+      env:
+        required: true
+        description: The application environment. Can be test, staging or prod.
+        type: string
       imageTargets:
         required: false
         description: If provided, sets targets for as many image builds as targets specified
@@ -138,12 +142,6 @@ jobs:
       channel-id: ${{ steps.vars.outputs.channel-id }}
       version: ${{ steps.vars.outputs.version }}
     steps:
-      - name: Check if 'env' input is provided
-        run: |
-          if [ -z "${{ github.event.deployment.payload.env }}" ]; then
-            echo "ERROR: 'env' input is missing or empty!"
-            exit 1
-          fi
       - name: Load deployment variables
         id: vars
         run: |
