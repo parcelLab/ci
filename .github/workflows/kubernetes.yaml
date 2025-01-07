@@ -27,6 +27,9 @@ on:
         description: The repository within Github that holds the version file to deploy via GitOps
         default: parcelLab/deployment
         type: string
+      env:
+        required: true
+        description: Environment variable value passed from the deployment.yaml
       imageTargets:
         required: false
         description: If provided, sets targets for as many image builds as targets specified
