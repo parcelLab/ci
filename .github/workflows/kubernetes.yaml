@@ -183,7 +183,7 @@ jobs:
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
     outputs:
-      finished: true
+      executed: ${{ steps.finalize.outputs.executed }}
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v3
@@ -240,6 +240,8 @@ jobs:
       - name: Push image to GitHub
         run: |
           docker push -a ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
+      - name: Set output
+        run: echo "::set-output name=executed::true"
 
   image-build-ecr-single:
     if: inputs.repository_kind == 'ecr' && inputs.imageTargets == ''
@@ -247,7 +249,7 @@ jobs:
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
     outputs:
-      finished: true
+      executed: ${{ steps.finalize.outputs.executed }}
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v3
@@ -316,6 +318,8 @@ jobs:
         if: inputs.repository_kind == 'ecr'
         run: |
           docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}
+      - name: Set output
+        run: echo "::set-output name=executed::true"
 
   image-build-github-matrix:
     if: inputs.repository_kind == 'github' && inputs.imageTargets != ''
@@ -323,7 +327,7 @@ jobs:
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
     outputs:
-      finished: true
+      executed: ${{ steps.finalize.outputs.executed }}
     strategy:
       matrix:
         containerfile_targets: ${{ fromJson(inputs.imageTargets) }}
@@ -384,6 +388,8 @@ jobs:
       - name: Push ${{ matrix.containerfile_targets }} image to ECR
         run: |
           docker push -a ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}
+      - name: Set output
+        run: echo "::set-output name=executed::true"
 
   image-build-ecr-matrix:
     if: inputs.repository_kind == 'ecr' && inputs.imageTargets != ''
@@ -391,7 +397,7 @@ jobs:
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
     outputs:
-      finished: true
+      executed: ${{ steps.finalize.outputs.executed }}
     strategy:
       matrix:
         containerfile_targets: ${{ fromJson(inputs.imageTargets) }}
@@ -461,15 +467,13 @@ jobs:
       - name: Push ${{ matrix.containerfile_targets }} image to ECR
         run: |
           docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}
+      - name: Set output
+        run: echo "::set-output name=executed::true"
 
   commit:
     environment: ${{ github.event.deployment.payload.env }}
     needs: [image-build-github-single,image-build-ecr-single,image-build-github-matrix,image-build-ecr-matrix]
-    if: |
-      needs.image-build-github-single.outputs.finished == 'true' || 
-      needs.image-build-ecr-single.outputs.finished == 'true' || 
-      needs.image-build-github-matrix.outputs.finished == 'true' || 
-      needs.image-build-ecr-matrix.outputs.finished == 'true'
+    if: needs.image-build-github-single.outputs.executed == 'true' || needs.image-build-ecr-single.outputs.executed == 'true' || needs.image-build-github-matrix.outputs.executed == 'true' || needs.image-build-ecr-matrix.outputs.executed == 'true'
     runs-on: ${{ inputs.runner }}
     steps:
       - name: Checkout ${{ inputs.deploymentRepoURL }} git repository
