@@ -182,6 +182,8 @@ jobs:
     needs: [initialize]
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
+    outputs:
+      finished: true
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v3
@@ -244,6 +246,8 @@ jobs:
     needs: [initialize]
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
+    outputs:
+      finished: true
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v3
@@ -318,6 +322,8 @@ jobs:
     needs: [initialize]
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
+    outputs:
+      finished: true
     strategy:
       matrix:
         containerfile_targets: ${{ fromJson(inputs.imageTargets) }}
@@ -384,6 +390,8 @@ jobs:
     needs: [initialize]
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
+    outputs:
+      finished: true
     strategy:
       matrix:
         containerfile_targets: ${{ fromJson(inputs.imageTargets) }}
@@ -456,6 +464,12 @@ jobs:
 
   commit:
     environment: ${{ github.event.deployment.payload.env }}
+    needs: [image-build-github-single,image-build-ecr-single,image-build-github-matrix,image-build-github-matrix]
+    if: |
+      needs.image-build-github-single.outputs.finished == 'true' || 
+      needs.image-build-ecr-single.outputs.finished == 'true' || 
+      needs.image-build-github-matrix.outputs.finished == 'true' || 
+      needs.image-build-github-matrix.outputs.finished == 'true'
     runs-on: ${{ inputs.runner }}
     steps:
       - name: Checkout ${{ inputs.deploymentRepoURL }} git repository
