@@ -455,8 +455,8 @@ jobs:
           docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}
 
   commit:
-    environment: ${{ github.event.deployment.payload.env }}
     needs: [initialize]
+    environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
     steps:
       - name: Checkout ${{ inputs.deploymentRepoURL }} git repository
