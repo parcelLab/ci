@@ -464,12 +464,12 @@ jobs:
 
   commit:
     environment: ${{ github.event.deployment.payload.env }}
-    needs: [image-build-github-single,image-build-ecr-single,image-build-github-matrix,image-build-github-matrix]
+    needs: [image-build-github-single,image-build-ecr-single,image-build-github-matrix,image-build-ecr-matrix]
     if: |
       needs.image-build-github-single.outputs.finished == 'true' || 
       needs.image-build-ecr-single.outputs.finished == 'true' || 
       needs.image-build-github-matrix.outputs.finished == 'true' || 
-      needs.image-build-github-matrix.outputs.finished == 'true'
+      needs.image-build-ecr-matrix.outputs.finished == 'true'
     runs-on: ${{ inputs.runner }}
     steps:
       - name: Checkout ${{ inputs.deploymentRepoURL }} git repository
