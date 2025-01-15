@@ -199,6 +199,10 @@ jobs:
           repository: parcelLab/ci
           ref: fix/kubernetes-jobs-order
           path: ./github/actions/ci
+      - name: check files
+        run: |
+          ls -al
+          pwd
       - name: Build single image
         if: inputs.imageTargets == ''
         uses: ./.github/actions/ci/.github/actions/build.matrix
