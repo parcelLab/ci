@@ -201,8 +201,8 @@ jobs:
           path: ./github/actions/ci
       - name: check files
         run: |
-          ls -al
-          pwd
+          ls -al github
+          tree
       - name: Build single image
         if: inputs.imageTargets == ''
         uses: ./.github/actions/ci/.github/actions/build.matrix
