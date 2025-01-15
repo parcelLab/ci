@@ -241,7 +241,7 @@ jobs:
 
   image-build-ecr-single:
     if: inputs.repository_kind == 'ecr' && inputs.imageTargets == ''
-    needs: [initialize]
+    needs: [image-build-github-single]
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
     steps:
@@ -315,7 +315,7 @@ jobs:
 
   image-build-github-matrix:
     if: inputs.repository_kind == 'github' && inputs.imageTargets != ''
-    needs: [initialize]
+    needs: [image-build-ecr-single]
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
     strategy:
@@ -381,7 +381,7 @@ jobs:
 
   image-build-ecr-matrix:
     if: inputs.repository_kind == 'ecr' && inputs.imageTargets != ''
-    needs: [initialize]
+    needs: [image-build-github-matrix]
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
     strategy:
@@ -455,7 +455,7 @@ jobs:
           docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}
 
   commit:
-    needs: [initialize]
+    needs: [image-build-ecr-matrix]
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
     steps:
