@@ -175,35 +175,54 @@ jobs:
     needs: [initialize]
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
-    with:
-      artifactName: ${{ inputs.artifactName }}
-      artifactPath: ${{ inputs.artifactPath }}
-      IMAGE_SCAN_SEVERITY: LOW
-      IMAGE_SCAN_SEVERITY_THRESHOLD: CRITICAL
-      IMAGE_SCAN_ANNOTATIONS: true
-      IMAGE_SCAN_TRIVY_TIMEOUT: 10m
-      preScript: ${{ inputs.preScript }}
-      registryHostname: ${{ inputs.registryHostname }}
-      registryOrg: ${{ inputs.registryOrg }}
-      registryUsername: ${{ inputs.registryUsername }}
-      repository_kind: ${{ inputs.repository_kind }}
-      runner: ${{ inputs.runner }}
-      VERSION: ${{ needs.initialize.outputs.version }}
-    secrets:
-      npmGithubReadToken: ${{ secrets.npmGithubReadToken }}
-      repoAccessToken: ${{ secrets.repoAccessToken }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
     steps:
       - name: single
         if: inputs.imageTargets == ''
         uses: ./.github/workflows/build.single.yaml
+        with:
+          artifactName: ${{ inputs.artifactName }}
+          artifactPath: ${{ inputs.artifactPath }}
+          IMAGE_SCAN_SEVERITY: LOW
+          IMAGE_SCAN_SEVERITY_THRESHOLD: CRITICAL
+          IMAGE_SCAN_ANNOTATIONS: true
+          IMAGE_SCAN_TRIVY_TIMEOUT: 10m
+          preScript: ${{ inputs.preScript }}
+          registryHostname: ${{ inputs.registryHostname }}
+          registryOrg: ${{ inputs.registryOrg }}
+          registryUsername: ${{ inputs.registryUsername }}
+          repository_kind: ${{ inputs.repository_kind }}
+          runner: ${{ inputs.runner }}
+          VERSION: ${{ needs.initialize.outputs.version }}
+        secrets:
+          npmGithubReadToken: ${{ secrets.npmGithubReadToken }}
+          repoAccessToken: ${{ secrets.repoAccessToken }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
       - name: matrix
         if: inputs.imageTargets != ''
         uses: ./.github/workflows/build.matrix.yaml
         with:
+          artifactName: ${{ inputs.artifactName }}
+          artifactPath: ${{ inputs.artifactPath }}
+          IMAGE_SCAN_SEVERITY: LOW
+          IMAGE_SCAN_SEVERITY_THRESHOLD: CRITICAL
+          IMAGE_SCAN_ANNOTATIONS: true
+          IMAGE_SCAN_TRIVY_TIMEOUT: 10m
           imageTargets: ${{ inputs.imageTargets }}
+          preScript: ${{ inputs.preScript }}
+          registryHostname: ${{ inputs.registryHostname }}
+          registryOrg: ${{ inputs.registryOrg }}
+          registryUsername: ${{ inputs.registryUsername }}
+          repository_kind: ${{ inputs.repository_kind }}
+          runner: ${{ inputs.runner }}
+          VERSION: ${{ needs.initialize.outputs.version }}
+        secrets:
+          npmGithubReadToken: ${{ secrets.npmGithubReadToken }}
+          repoAccessToken: ${{ secrets.repoAccessToken }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
 
   commit:
     needs: [build]
