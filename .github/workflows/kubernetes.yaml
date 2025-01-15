@@ -199,13 +199,9 @@ jobs:
           repository: parcelLab/ci
           ref: fix/kubernetes-jobs-order
           path: ./github/actions/ci
-      - name: check files
-        run: |
-          ls -al github/actions/ci
-          tree github/actions/ci/.github
       - name: Build single image
         if: inputs.imageTargets == ''
-        uses: ./.github/actions/ci/.github/actions/build.matrix
+        uses: ./github/actions/ci/.github/actions/build.matrix
         with:
           IMAGE_SCAN_SEVERITY: LOW
           IMAGE_SCAN_SEVERITY_THRESHOLD: CRITICAL
