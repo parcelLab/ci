@@ -80,7 +80,7 @@ jobs:
           echo "Run '${{ inputs.preScript }}'"
           ${{ inputs.preScript }}
         env:
-          NPM_GITHUB_TOKEN: ${{ secrets.npmGithubReadToken }}
+          NPM_GITHUB_TOKEN: ${{ inputs.npmGithubReadToken }}
       - if: inputs.artifactPath != '' && inputs.artifactName != ''
         name: Download artifact
         uses: actions/download-artifact@v4
@@ -92,7 +92,7 @@ jobs:
         with:
           registry: ${{ inputs.registryHostname }}
           username: ${{ inputs.registryUsername }}
-          password: ${{ secrets.repoAccessToken }}
+          password: ${{ inputs.repoAccessToken }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Build image
@@ -103,7 +103,7 @@ jobs:
             VERSION=${{ inputs.VERSION }}
             APP_NAME=${{ github.event.deployment.payload.name }}
             ENVIRONMENT=${{ github.event.deployment.payload.env }}
-            NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
+            NPM_GITHUB_TOKEN=${{ inputs.npmGithubReadToken }}
           cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
           cache-to: type=inline
           context: ${{ github.event.deployment.payload.container.context }}
@@ -141,7 +141,7 @@ jobs:
           echo "Run '${{ inputs.preScript }}'"
           ${{ inputs.preScript }}
         env:
-          NPM_GITHUB_TOKEN: ${{ secrets.npmGithubReadToken }}
+          NPM_GITHUB_TOKEN: ${{ inputs.npmGithubReadToken }}
       - if: inputs.artifactPath != '' && inputs.artifactName != ''
         name: Download artifact
         uses: actions/download-artifact@v4
@@ -154,8 +154,8 @@ jobs:
         if: inputs.repository_kind == 'ecr'
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-access-key-id: ${{ inputs.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ inputs.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-central-1
       - name: Create ECR repository if it doesn't exist
         run: |
@@ -174,7 +174,7 @@ jobs:
             VERSION=${{ inputs.VERSION }}
             APP_NAME=${{ github.event.deployment.payload.name }}
             ENVIRONMENT=${{ github.event.deployment.payload.env }}
-            NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
+            NPM_GITHUB_TOKEN=${{ inputs.npmGithubReadToken }}
           cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
           cache-to: type=inline
           context: ${{ github.event.deployment.payload.container.context }}
