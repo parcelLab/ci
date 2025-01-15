@@ -195,7 +195,7 @@ jobs:
         uses: docker/setup-buildx-action@v2
       - name: Build single image
         if: inputs.imageTargets == ''
-        uses: ./.github/workflows/actions/build.single
+        uses: parcelLab/ci/.github/workflows/actions/build.single@fix/kubernetes-jobs-order
         with:
           IMAGE_SCAN_SEVERITY: LOW
           IMAGE_SCAN_SEVERITY_THRESHOLD: CRITICAL
