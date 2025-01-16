@@ -1,5 +1,5 @@
 name: Reusable single image build workflow with ECR or GitHub Registry
-
+on:
   workflow_call:
     inputs:
       artifactName:
