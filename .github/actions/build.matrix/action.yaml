@@ -88,14 +88,14 @@ jobs:
           file: $GITHUB_PAYLOAD_FILE
           platforms: linux/amd64
           tags: |
-            $$ECR/$GITHUB_PAYLOAD_NAME-${{ matrix.containerfile_targets }}:latest
-            $$ECR/$GITHUB_PAYLOAD_NAME-${{ matrix.containerfile_targets }}:$VERSION
-            $$ECR/$GITHUB_PAYLOAD_NAME-${{ matrix.containerfile_targets }}:$GITHUB_SHA
+            $ECR/$GITHUB_PAYLOAD_NAME-${{ matrix.containerfile_targets }}:latest
+            $ECR/$GITHUB_PAYLOAD_NAME-${{ matrix.containerfile_targets }}:$VERSION
+            $ECR/$GITHUB_PAYLOAD_NAME-${{ matrix.containerfile_targets }}:$GITHUB_SHA
           target: ${{ matrix.containerfile_targets }}
       - name: Scan for vulnerabilities
         uses: crazy-max/ghaction-container-scan@v3
         with:
-          image: $$ECR/$GITHUB_PAYLOAD_NAME-${{ matrix.containerfile_targets }}:latest
+          image: $ECR/$GITHUB_PAYLOAD_NAME-${{ matrix.containerfile_targets }}:latest
           dockerfile: Containerfile
           severity: $IMAGE_SCAN_SEVERITY
           severity_threshold: $IMAGE_SCAN_SEVERITY_THRESHOLD
@@ -104,4 +104,4 @@ jobs:
           TRIVY_TIMEOUT: $IMAGE_SCAN_TRIVY_TIMEOUT
       - name: Push ${{ matrix.containerfile_targets }} image to ECR
         run: |
-          docker push -a $$ECR/$GITHUB_PAYLOAD_NAME-${{ matrix.containerfile_targets }}
+          docker push -a $ECR/$GITHUB_PAYLOAD_NAME-${{ matrix.containerfile_targets }}
