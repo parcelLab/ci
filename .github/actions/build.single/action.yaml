@@ -1,141 +1,68 @@
 name: Reusable single image build workflow with ECR or GitHub Registry
-on:
-  workflow_call:
-    inputs:
-      GITHUB_SHA:
-        required: true
-        type: string
-      GITHUB_PAYLOAD_ENVIRONMENT:
-        required: true
-        type: string
-      GITHUB_PAYLOAD_NAME:
-        required: true
-        type: string
-      GITHUB_PAYLOAD_CONTEXT:
-        required: true
-        type: string
-      GITHUB_PAYLOAD_FILE:
-        required: true
-        type: string
-      IMAGE_SCAN_SEVERITY:
-        required: true
-        type: string
-      IMAGE_SCAN_SEVERITY_THRESHOLD:
-        required: true
-        type: string
-      IMAGE_SCAN_ANNOTATIONS:
-        required: true
-        type: string
-      IMAGE_SCAN_TRIVY_TIMEOUT:
-        required: true
-        type: string
-      preScript:
-        required: false
-        description: If provided, runs a script after repo checkout and before the docker image is built. Useful in case that you need to build a package outside of the docker image (and load the artifacts via copy).
-        type: string
-      registryHostname:
-        required: false
-        description: The hostname for the container registry
-        type: string
-      registryOrg:
-        required: false
-        description: The registry organization
-        type: string
-      registryUsername:
-        required: false
-        description: The username for the container registry
-        type: string
-      repository_kind:
-        required: false
-        description: The kind of repository (github or ecr)
-        type: string
-      runner:
-        required: false
-        description: Runner type
-        type: string
-      VERSION:
-        required: true
-        type: string
-    secrets:
-      npmGithubReadToken:
-        required: true
-        description: The Github token with permissions to read NPM private packages
-      repoAccessToken:
-        required: true
-        description: The Github token to perform operations cross-repo (not github.token!)
-      AWS_ACCESS_KEY_ID:
-        required: true
-        description: Access key ID for AWS credentials
-      AWS_SECRET_ACCESS_KEY:
-        required: true
-        description: Secet for AWS access key ID
-      AWS_ACCOUNT_ID:
-        required: true
-        description: AWS Account ID
 
 jobs:
   github:
-    if: ${{ inputs.repository_kind }} == 'github'
-    environment: ${{ inputs.GITHUB_PAYLOAD_ENVIRONMENT }}
-    runs-on: ${{ inputs.runner }}
+    if: ${{ env.repository_kind }} == 'github'
+    environment: ${{ env.GITHUB_PAYLOAD_ENVIRONMENT }}
+    runs-on: ${{ env.runner }}
     steps:
       - name: Login to Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ inputs.registryHostname }}
-          username: ${{ inputs.registryUsername }}
-          password: ${{ inputs.repoAccessToken }}
+          registry: ${{ env.registryHostname }}
+          username: ${{ env.registryUsername }}
+          password: ${{ env.repoAccessToken }}
       - name: Build image
         uses: docker/build-push-action@v6
         with:
           build-args: |
-            GITHUB_SHA=${{ inputs.GITHUB_SHA }}
-            VERSION=${{ inputs.VERSION }}
-            APP_NAME=${{ inputs.GITHUB_PAYLOAD_NAME }}
-            ENVIRONMENT=${{ inputs.GITHUB_PAYLOAD_ENVIRONMENT }}
-            NPM_GITHUB_TOKEN=${{ inputs.npmGithubReadToken }}
-          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.GITHUB_PAYLOAD_NAME }}
+            GITHUB_SHA=${{ env.GITHUB_SHA }}
+            VERSION=${{ env.VERSION }}
+            APP_NAME=${{ env.GITHUB_PAYLOAD_NAME }}
+            ENVIRONMENT=${{ env.GITHUB_PAYLOAD_ENVIRONMENT }}
+            NPM_GITHUB_TOKEN=${{ env.npmGithubReadToken }}
+          cache-from: type=registry,ref=${{ env.registryHostname }}/${{ env.registryOrg }}/${{ env.GITHUB_PAYLOAD_NAME }}
           cache-to: type=inline
-          context: ${{ inputs.GITHUB_PAYLOAD_CONTEXT }}
+          context: ${{ env.GITHUB_PAYLOAD_CONTEXT }}
           load: true
           file: ${{ GITHUB_PAYLOAD_FILE }}
           platforms: linux/amd64
           tags: |
-            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.GITHUB_PAYLOAD_NAME }}:latest
-            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.GITHUB_PAYLOAD_NAME }}:${{ inputs.VERSION }}
-            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.GITHUB_PAYLOAD_NAME }}:${{ inputs.GITHUB_SHA }}
+            ${{ env.registryHostname }}/${{ env.registryOrg }}/${{ env.GITHUB_PAYLOAD_NAME }}:latest
+            ${{ env.registryHostname }}/${{ env.registryOrg }}/${{ env.GITHUB_PAYLOAD_NAME }}:${{ env.VERSION }}
+            ${{ env.registryHostname }}/${{ env.registryOrg }}/${{ env.GITHUB_PAYLOAD_NAME }}:${{ env.GITHUB_SHA }}
       - name: Scan for vulnerabilities
         uses: crazy-max/ghaction-container-scan@v3
         with:
-          image: ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.GITHUB_PAYLOAD_NAME }}:latest
+          image: ${{ env.registryHostname }}/${{ env.registryOrg }}/${{ env.GITHUB_PAYLOAD_NAME }}:latest
           dockerfile: Containerfile
-          severity: ${{ inputs.IMAGE_SCAN_SEVERITY }}
-          severity_threshold: ${{ inputs.IMAGE_SCAN_SEVERITY_THRESHOLD }}
-          annotations: ${{ inputs.IMAGE_SCAN_ANNOTATIONS }}
+          severity: ${{ env.IMAGE_SCAN_SEVERITY }}
+          severity_threshold: ${{ env.IMAGE_SCAN_SEVERITY_THRESHOLD }}
+          annotations: ${{ env.IMAGE_SCAN_ANNOTATIONS }}
         env:
-          TRIVY_TIMEOUT: ${{ inputs.IMAGE_SCAN_TRIVY_TIMEOUT }}
+          TRIVY_TIMEOUT: ${{ env.IMAGE_SCAN_TRIVY_TIMEOUT }}
       - name: Push image to GitHub
         run: |
-          docker push -a ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.GITHUB_PAYLOAD_NAME }}
+          docker push -a ${{ env.registryHostname }}/${{ env.registryOrg }}/${{ env.GITHUB_PAYLOAD_NAME }}
 
   ecr:
-    if: ${{ inputs.repository_kind }} == 'ecr'
-    environment: ${{ inputs.GITHUB_PAYLOAD_ENVIRONMENT }}
-    runs-on: ${{ inputs.runner }}
+    if: ${{ env.repository_kind }} == 'ecr'
+    environment: ${{ env.GITHUB_PAYLOAD_ENVIRONMENT }}
+    runs-on: ${{ env.runner }}
     steps:
       - name: Configure AWS credentials
-        if: ${{ inputs.repository_kind }} == 'ecr'
+        if: ${{ env.repository_kind }} == 'ecr'
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          aws-access-key-id: ${{ inputs.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ inputs.AWS_SECRET_ACCESS_KEY }}
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-central-1
       - name: Create ECR repository if it doesn't exist
         run: |
-          aws ecr describe-repositories --repository-names ${{ inputs.GITHUB_PAYLOAD_NAME }} || \
-          aws ecr create-repository --repository-name ${{ inputs.GITHUB_PAYLOAD_NAME }}
+          aws ecr describe-repositories --repository-names ${{ env.GITHUB_PAYLOAD_NAME }} || \
+          aws ecr create-repository --repository-name ${{ env.GITHUB_PAYLOAD_NAME }}
           LIFECYCLE_POLICY='{"rules":[{"rulePriority":1,"description":"Keep last 500 images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":500},"action":{"type":"expire"}}]}'
-          aws ecr put-lifecycle-policy --repository-name ${{ inputs.GITHUB_PAYLOAD_NAME }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
+          aws ecr put-lifecycle-policy --repository-name ${{ env.GITHUB_PAYLOAD_NAME }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -143,33 +70,33 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           build-args: |
-            GITHUB_SHA=${{ inputs.GITHUB_SHA }}
-            VERSION=${{ inputs.VERSION }}
-            APP_NAME=${{ inputs.GITHUB_PAYLOAD_NAME }}
-            ENVIRONMENT=${{ inputs.GITHUB_PAYLOAD_ENVIRONMENT }}
-            NPM_GITHUB_TOKEN=${{ inputs.npmGithubReadToken }}
-          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.GITHUB_PAYLOAD_NAME }}
+            GITHUB_SHA=${{ env.GITHUB_SHA }}
+            VERSION=${{ env.VERSION }}
+            APP_NAME=${{ env.GITHUB_PAYLOAD_NAME }}
+            ENVIRONMENT=${{ env.GITHUB_PAYLOAD_ENVIRONMENT }}
+            NPM_GITHUB_TOKEN=${{ env.npmGithubReadToken }}
+          cache-from: type=registry,ref=${{ env.registryHostname }}/${{ env.registryOrg }}/${{ env.GITHUB_PAYLOAD_NAME }}
           cache-to: type=inline
-          context: ${{ inputs.GITHUB_PAYLOAD_CONTEXT }}
+          context: ${{ env.GITHUB_PAYLOAD_CONTEXT }}
           load: true
           file: ${{ GITHUB_PAYLOAD_FILE }}
           platforms: linux/amd64
           tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.GITHUB_PAYLOAD_NAME }}:latest
-            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.GITHUB_PAYLOAD_NAME }}:${{ inputs.VERSION }}
-            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.GITHUB_PAYLOAD_NAME }}:${{ inputs.GITHUB_SHA }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.GITHUB_PAYLOAD_NAME }}:latest
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.GITHUB_PAYLOAD_NAME }}:${{ env.VERSION }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.GITHUB_PAYLOAD_NAME }}:${{ env.GITHUB_SHA }}
       - name: Scan for vulnerabilities
-        if: ${{ inputs.repository_kind }} == 'ecr'
+        if: ${{ env.repository_kind }} == 'ecr'
         uses: crazy-max/ghaction-container-scan@v3
         with:
-          image: ${{ steps.login-ecr.outputs.registry }}/${{ inputs.GITHUB_PAYLOAD_NAME }}:latest
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.GITHUB_PAYLOAD_NAME }}:latest
           dockerfile: Containerfile
-          severity: ${{ inputs.IMAGE_SCAN_SEVERITY }}
-          severity_threshold: ${{ inputs.IMAGE_SCAN_SEVERITY_THRESHOLD }}
-          annotations: ${{ inputs.IMAGE_SCAN_ANNOTATIONS }}
+          severity: ${{ env.IMAGE_SCAN_SEVERITY }}
+          severity_threshold: ${{ env.IMAGE_SCAN_SEVERITY_THRESHOLD }}
+          annotations: ${{ env.IMAGE_SCAN_ANNOTATIONS }}
         env:
-          TRIVY_TIMEOUT: ${{ inputs.IMAGE_SCAN_TRIVY_TIMEOUT }}
+          TRIVY_TIMEOUT: ${{ env.IMAGE_SCAN_TRIVY_TIMEOUT }}
       - name: Push image to ECR
-        if: ${{ inputs.repository_kind }} == 'ecr'
+        if: ${{ env.repository_kind }} == 'ecr'
         run: |
-          docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ inputs.GITHUB_PAYLOAD_NAME }}
+          docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ env.GITHUB_PAYLOAD_NAME }}
