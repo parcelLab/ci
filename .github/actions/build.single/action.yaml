@@ -61,7 +61,7 @@ on:
 jobs:
   github:
     if: inputs.repository_kind == 'github'
-    environment: ${{ github.event.deployment.payload.env }}
+    environment: ${{ inputs.GITHUB_PAYLOAD_ENVIRONMENT }}
     runs-on: ${{ inputs.runner }}
     steps:
       - name: Login to Container Registry
@@ -74,25 +74,25 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           build-args: |
-            GITHUB_SHA=${{ github.sha }}
+            GITHUB_SHA=${{ inputs.GITHUB_SHA }}
             VERSION=${{ inputs.VERSION }}
-            APP_NAME=${{ github.event.deployment.payload.name }}
-            ENVIRONMENT=${{ github.event.deployment.payload.env }}
+            APP_NAME=${{ inputs.GITHUB_PAYLOAD_NAME }}
+            ENVIRONMENT=${{ inputs.GITHUB_PAYLOAD_ENVIRONMENT }}
             NPM_GITHUB_TOKEN=${{ inputs.npmGithubReadToken }}
-          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
+          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.GITHUB_PAYLOAD_NAME }}
           cache-to: type=inline
-          context: ${{ github.event.deployment.payload.container.context }}
+          context: ${{ inputs.GITHUB_PAYLOAD_CONTEXT }}
           load: true
-          file: ${{ github.event.deployment.payload.container.file }}
+          file: ${{ GITHUB_PAYLOAD_FILE }}
           platforms: linux/amd64
           tags: |
-            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:latest
-            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:${{ inputs.VERSION }}
-            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:${{ github.sha }}
+            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.GITHUB_PAYLOAD_NAME }}:latest
+            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.GITHUB_PAYLOAD_NAME }}:${{ inputs.VERSION }}
+            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.GITHUB_PAYLOAD_NAME }}:${{ inputs.GITHUB_SHA }}
       - name: Scan for vulnerabilities
         uses: crazy-max/ghaction-container-scan@v3
         with:
-          image: ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:latest
+          image: ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.GITHUB_PAYLOAD_NAME }}:latest
           dockerfile: Containerfile
           severity: ${{ inputs.IMAGE_SCAN_SEVERITY }}
           severity_threshold: ${{ inputs.IMAGE_SCAN_SEVERITY_THRESHOLD }}
@@ -101,11 +101,11 @@ jobs:
           TRIVY_TIMEOUT: ${{ inputs.IMAGE_SCAN_TRIVY_TIMEOUT }}
       - name: Push image to GitHub
         run: |
-          docker push -a ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
+          docker push -a ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.GITHUB_PAYLOAD_NAME }}
 
   ecr:
     if: inputs.repository_kind == 'ecr'
-    environment: ${{ github.event.deployment.payload.env }}
+    environment: ${{ inputs.GITHUB_PAYLOAD_ENVIRONMENT }}
     runs-on: ${{ inputs.runner }}
     steps:
       - name: Configure AWS credentials
@@ -117,10 +117,10 @@ jobs:
           aws-region: eu-central-1
       - name: Create ECR repository if it doesn't exist
         run: |
-          aws ecr describe-repositories --repository-names ${{ github.event.deployment.payload.name }} || \
-          aws ecr create-repository --repository-name ${{ github.event.deployment.payload.name }}
+          aws ecr describe-repositories --repository-names ${{ inputs.GITHUB_PAYLOAD_NAME }} || \
+          aws ecr create-repository --repository-name ${{ inputs.GITHUB_PAYLOAD_NAME }}
           LIFECYCLE_POLICY='{"rules":[{"rulePriority":1,"description":"Keep last 500 images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":500},"action":{"type":"expire"}}]}'
-          aws ecr put-lifecycle-policy --repository-name ${{ github.event.deployment.payload.name }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
+          aws ecr put-lifecycle-policy --repository-name ${{ inputs.GITHUB_PAYLOAD_NAME }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -128,26 +128,26 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           build-args: |
-            GITHUB_SHA=${{ github.sha }}
+            GITHUB_SHA=${{ inputs.GITHUB_SHA }}
             VERSION=${{ inputs.VERSION }}
-            APP_NAME=${{ github.event.deployment.payload.name }}
-            ENVIRONMENT=${{ github.event.deployment.payload.env }}
+            APP_NAME=${{ inputs.GITHUB_PAYLOAD_NAME }}
+            ENVIRONMENT=${{ inputs.GITHUB_PAYLOAD_ENVIRONMENT }}
             NPM_GITHUB_TOKEN=${{ inputs.npmGithubReadToken }}
-          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
+          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.GITHUB_PAYLOAD_NAME }}
           cache-to: type=inline
-          context: ${{ github.event.deployment.payload.container.context }}
+          context: ${{ inputs.GITHUB_PAYLOAD_CONTEXT }}
           load: true
-          file: ${{ github.event.deployment.payload.container.file }}
+          file: ${{ GITHUB_PAYLOAD_FILE }}
           platforms: linux/amd64
           tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:latest
-            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:${{ inputs.VERSION }}
-            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.GITHUB_PAYLOAD_NAME }}:latest
+            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.GITHUB_PAYLOAD_NAME }}:${{ inputs.VERSION }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.GITHUB_PAYLOAD_NAME }}:${{ inputs.GITHUB_SHA }}
       - name: Scan for vulnerabilities
         if: inputs.repository_kind == 'ecr'
         uses: crazy-max/ghaction-container-scan@v3
         with:
-          image: ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:latest
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ inputs.GITHUB_PAYLOAD_NAME }}:latest
           dockerfile: Containerfile
           severity: ${{ inputs.IMAGE_SCAN_SEVERITY }}
           severity_threshold: ${{ inputs.IMAGE_SCAN_SEVERITY_THRESHOLD }}
@@ -157,4 +157,4 @@ jobs:
       - name: Push image to ECR
         if: inputs.repository_kind == 'ecr'
         run: |
-          docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}
+          docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ inputs.GITHUB_PAYLOAD_NAME }}

@@ -218,6 +218,11 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_PAYLOAD_ENVIRONMENT: ${{ github.event.deployment.payload.env }}
+          GITHUB_PAYLOAD_NAME: ${{ github.event.deployment.payload.name }}
+          GITHUB_PAYLOAD_CONTEXT: ${{ github.event.deployment.payload.container.context }}
+          GITHUB_PAYLOAD_FILE: ${{ github.event.deployment.payload.container.file }}
       - name: Build images in a matrix
         if: inputs.imageTargets != ''
         uses: ./github/actions/ci/.github/actions/build.matrix
@@ -240,6 +245,11 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_PAYLOAD_ENVIRONMENT: ${{ github.event.deployment.payload.env }}
+          GITHUB_PAYLOAD_NAME: ${{ github.event.deployment.payload.name }}
+          GITHUB_PAYLOAD_CONTEXT: ${{ github.event.deployment.payload.container.context }}
+          GITHUB_PAYLOAD_FILE: ${{ github.event.deployment.payload.container.file }}
 
   commit:
     needs: [build]

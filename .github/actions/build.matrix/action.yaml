@@ -59,7 +59,7 @@ on:
 jobs:
   github:
     if: inputs.repository_kind == 'github'
-    environment: ${{ github.event.deployment.payload.env }}
+    environment: ${{ inputs.GITHUB_PAYLOAD_ENVIRONMENT }}
     runs-on: ${{ inputs.runner }}
     strategy:
       matrix:
@@ -75,26 +75,26 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           build-args: |
-            GITHUB_SHA=${{ github.sha }}
+            GITHUB_SHA=${{ inputs.GITHUB_SHA }}
             VERSION=${{ inputs.VERSION }}
-            APP_NAME=${{ github.event.deployment.payload.name }}
-            ENVIRONMENT=${{ github.event.deployment.payload.env }}
+            APP_NAME=${{ inputs.GITHUB_PAYLOAD_NAME }}
+            ENVIRONMENT=${{ inputs.GITHUB_PAYLOAD_ENVIRONMENT }}
             NPM_GITHUB_TOKEN=${{ inputs.npmGithubReadToken }}
-          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
+          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.GITHUB_PAYLOAD_NAME }}
           cache-to: type=inline
-          context: ${{ github.event.deployment.payload.container.context }}
+          context: ${{ inputs.GITHUB_PAYLOAD_CONTEXT }}
           load: true
-          file: ${{ github.event.deployment.payload.container.file }}
+          file: ${{ GITHUB_PAYLOAD_FILE }}
           platforms: linux/amd64
           tags: |
-            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:latest
-            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:${{ inputs.VERSION }}
-            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:${{ github.sha }}
+            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.GITHUB_PAYLOAD_NAME }}-${{ matrix.containerfile_targets }}:latest
+            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.GITHUB_PAYLOAD_NAME }}-${{ matrix.containerfile_targets }}:${{ inputs.VERSION }}
+            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.GITHUB_PAYLOAD_NAME }}-${{ matrix.containerfile_targets }}:${{ inputs.GITHUB_SHA }}
           target: ${{ matrix.containerfile_targets }}
       - name: Scan for vulnerabilities
         uses: crazy-max/ghaction-container-scan@v3
         with:
-          image: ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:latest
+          image: ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.GITHUB_PAYLOAD_NAME }}-${{ matrix.containerfile_targets }}:latest
           dockerfile: Containerfile
           severity: ${{ inputs.IMAGE_SCAN_SEVERITY }}
           severity_threshold: ${{ inputs.IMAGE_SCAN_SEVERITY_THRESHOLD }}
@@ -103,11 +103,11 @@ jobs:
           TRIVY_TIMEOUT: ${{ inputs.IMAGE_SCAN_TRIVY_TIMEOUT }}
       - name: Push ${{ matrix.containerfile_targets }} image to ECR
         run: |
-          docker push -a ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}
+          docker push -a ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.GITHUB_PAYLOAD_NAME }}-${{ matrix.containerfile_targets }}
 
   ecr:
     if: inputs.repository_kind == 'ecr'
-    environment: ${{ github.event.deployment.payload.env }}
+    environment: ${{ inputs.GITHUB_PAYLOAD_ENVIRONMENT }}
     runs-on: ${{ inputs.runner }}
     strategy:
       matrix:
@@ -121,10 +121,10 @@ jobs:
           aws-region: eu-central-1
       - name: Create ${{ matrix.containerfile_targets }} ECR repository if it doesn't exist
         run: |
-          aws ecr describe-repositories --repository-names ${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }} || \
-          aws ecr create-repository --repository-name ${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}
+          aws ecr describe-repositories --repository-names ${{ inputs.GITHUB_PAYLOAD_NAME }}-${{ matrix.containerfile_targets }} || \
+          aws ecr create-repository --repository-name ${{ inputs.GITHUB_PAYLOAD_NAME }}-${{ matrix.containerfile_targets }}
           LIFECYCLE_POLICY='{"rules":[{"rulePriority":1,"description":"Keep last 500 images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":500},"action":{"type":"expire"}}]}'
-          aws ecr put-lifecycle-policy --repository-name ${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
+          aws ecr put-lifecycle-policy --repository-name ${{ inputs.GITHUB_PAYLOAD_NAME }}-${{ matrix.containerfile_targets }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -132,26 +132,26 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           build-args: |
-            GITHUB_SHA=${{ github.sha }}
+            GITHUB_SHA=${{ inputs.GITHUB_SHA }}
             VERSION=${{ inputs.VERSION }}
-            APP_NAME=${{ github.event.deployment.payload.name }}
-            ENVIRONMENT=${{ github.event.deployment.payload.env }}
+            APP_NAME=${{ inputs.GITHUB_PAYLOAD_NAME }}
+            ENVIRONMENT=${{ inputs.GITHUB_PAYLOAD_ENVIRONMENT }}
             NPM_GITHUB_TOKEN=${{ inputs.npmGithubReadToken }}
-          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
+          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.GITHUB_PAYLOAD_NAME }}
           cache-to: type=inline
-          context: ${{ github.event.deployment.payload.container.context }}
+          context: ${{ inputs.GITHUB_PAYLOAD_CONTEXT }}
           load: true
-          file: ${{ github.event.deployment.payload.container.file }}
+          file: ${{ GITHUB_PAYLOAD_FILE }}
           platforms: linux/amd64
           tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:latest
-            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:${{ inputs.VERSION }}
-            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.GITHUB_PAYLOAD_NAME }}-${{ matrix.containerfile_targets }}:latest
+            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.GITHUB_PAYLOAD_NAME }}-${{ matrix.containerfile_targets }}:${{ inputs.VERSION }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.GITHUB_PAYLOAD_NAME }}-${{ matrix.containerfile_targets }}:${{ inputs.GITHUB_SHA }}
           target: ${{ matrix.containerfile_targets }}
       - name: Scan for vulnerabilities
         uses: crazy-max/ghaction-container-scan@v3
         with:
-          image: ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:latest
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ inputs.GITHUB_PAYLOAD_NAME }}-${{ matrix.containerfile_targets }}:latest
           dockerfile: Containerfile
           severity: ${{ inputs.IMAGE_SCAN_SEVERITY }}
           severity_threshold: ${{ inputs.IMAGE_SCAN_SEVERITY_THRESHOLD }}
@@ -160,4 +160,4 @@ jobs:
           TRIVY_TIMEOUT: ${{ inputs.IMAGE_SCAN_TRIVY_TIMEOUT }}
       - name: Push ${{ matrix.containerfile_targets }} image to ECR
         run: |
-          docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}
+          docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ inputs.GITHUB_PAYLOAD_NAME }}-${{ matrix.containerfile_targets }}
