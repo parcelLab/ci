@@ -212,21 +212,21 @@ jobs:
           IMAGE_SCAN_SEVERITY_THRESHOLD: CRITICAL
           IMAGE_SCAN_ANNOTATIONS: true
           IMAGE_SCAN_TRIVY_TIMEOUT: 10m
-          registryHostname: ${{ inputs.registryHostname }}
-          registryOrg: ${{ inputs.registryOrg }}
-          registryUsername: ${{ inputs.registryUsername }}
-          repository_kind: ${{ inputs.repository_kind }}
-          runner: ${{ inputs.runner }}
+          REGISTRY_HOSTNAME: ${{ inputs.registryHostname }}
+          REGISTRY_ORG: ${{ inputs.registryOrg }}
+          REGISTRY_USERNAME: ${{ inputs.registryUsername }}
+          REPOSITORY_KIND: ${{ inputs.repository_kind }}
+          RUNNER: ${{ inputs.runner }}
           VERSION: ${{ needs.initialize.outputs.version }}
-          npmGithubReadToken: ${{ secrets.npmGithubReadToken }}
-          repoAccessToken: ${{ secrets.repoAccessToken }}
+          NPM_GITHUB_READ_TOKEN: ${{ secrets.npmGithubReadToken }}
+          REPO_ACCESS_TOKEN: ${{ secrets.repoAccessToken }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
       - name: Build images in a matrix
         if: inputs.imageTargets != ''
         uses: ./github/actions/ci/.github/actions/build.matrix
-        with:
+        env:
           GITHUB_SHA: ${{ github.sha }}
           GITHUB_PAYLOAD_ENVIRONMENT: ${{ github.event.deployment.payload.env }}
           GITHUB_PAYLOAD_NAME: ${{ github.event.deployment.payload.name }}
@@ -237,14 +237,14 @@ jobs:
           IMAGE_SCAN_ANNOTATIONS: true
           IMAGE_SCAN_TRIVY_TIMEOUT: 10m
           imageTargets: ${{ inputs.imageTargets }}
-          registryHostname: ${{ inputs.registryHostname }}
-          registryOrg: ${{ inputs.registryOrg }}
-          registryUsername: ${{ inputs.registryUsername }}
-          repository_kind: ${{ inputs.repository_kind }}
-          runner: ${{ inputs.runner }}
+          REGISTRY_HOSTNAME: ${{ inputs.registryHostname }}
+          REGISTRY_ORG: ${{ inputs.registryOrg }}
+          REGISTRY_USERNAME: ${{ inputs.registryUsername }}
+          REPOSITORY_KIND: ${{ inputs.repository_kind }}
+          RUNNER: ${{ inputs.runner }}
           VERSION: ${{ needs.initialize.outputs.version }}
-          npmGithubReadToken: ${{ secrets.npmGithubReadToken }}
-          repoAccessToken: ${{ secrets.repoAccessToken }}
+          NPM_GITHUB_READ_TOKEN: ${{ secrets.npmGithubReadToken }}
+          REPO_ACCESS_TOKEN: ${{ secrets.repoAccessToken }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
