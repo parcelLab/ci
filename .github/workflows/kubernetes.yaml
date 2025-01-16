@@ -125,6 +125,9 @@ on:
         required: true
         description: AWS Account ID
 
+env:
+  ECR: 212550490986.dkr.ecr.eu-central-1.amazonaws.com
+
 jobs:
   initialize:
     environment: ${{ github.event.deployment.payload.env }}
@@ -223,6 +226,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+          ECR: ${{ envs.ECR }}
       - name: Build images in a matrix
         if: inputs.imageTargets != ''
         uses: ./github/actions/ci/.github/actions/build.matrix
@@ -248,6 +252,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+          ECR: ${{ envs.ECR }}
 
 
   commit:

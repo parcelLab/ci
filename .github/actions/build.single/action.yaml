@@ -82,14 +82,14 @@ jobs:
           file: $GITHUB_PAYLOAD_FILE
           platforms: linux/amd64
           tags: |
-            ${{ steps.login-ecr.outputs.registry }}/$GITHUB_PAYLOAD_NAME:latest
-            ${{ steps.login-ecr.outputs.registry }}/$GITHUB_PAYLOAD_NAME:$VERSION
-            ${{ steps.login-ecr.outputs.registry }}/$GITHUB_PAYLOAD_NAME:$GITHUB_SHA
+            $ECR/$GITHUB_PAYLOAD_NAME:latest
+            $$ECR/$GITHUB_PAYLOAD_NAME:$VERSION
+            $$ECR/$GITHUB_PAYLOAD_NAME:$GITHUB_SHA
       - name: Scan for vulnerabilities
         if: $REPOSITORY_KIND == 'ecr'
         uses: crazy-max/ghaction-container-scan@v3
         with:
-          image: ${{ steps.login-ecr.outputs.registry }}/$GITHUB_PAYLOAD_NAME:latest
+          image: $$ECR/$GITHUB_PAYLOAD_NAME:latest
           dockerfile: Containerfile
           severity: $IMAGE_SCAN_SEVERITY
           severity_threshold: $IMAGE_SCAN_SEVERITY_THRESHOLD
@@ -99,4 +99,4 @@ jobs:
       - name: Push image to ECR
         if: $REPOSITORY_KIND == 'ecr'
         run: |
-          docker push -a ${{ steps.login-ecr.outputs.registry }}/$GITHUB_PAYLOAD_NAME
+          docker push -a $$ECR/$GITHUB_PAYLOAD_NAME
