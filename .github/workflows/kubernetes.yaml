@@ -202,7 +202,7 @@ jobs:
       - name: Build single image
         if: inputs.imageTargets == ''
         uses: ./github/actions/ci/.github/actions/build.single
-        with:
+        env:
           GITHUB_SHA: ${{ github.sha }}
           GITHUB_PAYLOAD_ENVIRONMENT: ${{ github.event.deployment.payload.env }}
           GITHUB_PAYLOAD_NAME: ${{ github.event.deployment.payload.name }}
