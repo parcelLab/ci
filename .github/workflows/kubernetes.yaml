@@ -204,7 +204,7 @@ jobs:
           path: ./github/actions/ci
       - name: Build single image
         if: inputs.imageTargets == ''
-        uses: ./github/actions/ci/.github/actions/build.single
+        uses: ./github/actions/ci/.github/actions/build.single/action.yaml
         env:
           GITHUB_SHA: ${{ github.sha }}
           GITHUB_PAYLOAD_ENVIRONMENT: ${{ github.event.deployment.payload.env }}

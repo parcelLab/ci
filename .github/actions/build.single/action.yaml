@@ -1,103 +1,205 @@
 name: Reusable single image build workflow with ECR or GitHub Registry
 
-runs:
-  using: "composite"
-  # github:
-  #   if: $REPOSITORY_KIND == 'github'
-  #   environment: $GITHUB_PAYLOAD_ENVIRONMENT
-  #   runs-on: $RUNNER
-  #   steps:
-  #     - name: Login to Container Registry
-  #       uses: docker/login-action@v3
-  #       with:
-  #         registry: $REGISTRY_HOSTNAME
-  #         username: $REGISTRY_USERNAME
-  #         password: $REPO_ACCESS_TOKEN
-  #     - name: Build image
-  #       uses: docker/build-push-action@v6
-  #       with:
-  #         build-args: |
-  #           GITHUB_SHA=$GITHUB_SHA
-  #           VERSION=$VERSION
-  #           APP_NAME=$GITHUB_PAYLOAD_NAME
-  #           ENVIRONMENT=$GITHUB_PAYLOAD_ENVIRONMENT
-  #           NPM_GITHUB_TOKEN=$NPM_GITHUB_READ_TOKEN
-  #         cache-from: type=registry,ref=$REGISTRY_HOSTNAME/$REGISTRY_ORG/$GITHUB_PAYLOAD_NAME
-  #         cache-to: type=inline
-  #         context: $GITHUB_PAYLOAD_CONTEXT
-  #         load: true
-  #         file: $GITHUB_PAYLOAD_FILE
-  #         platforms: linux/amd64
-  #         tags: |
-  #           $REGISTRY_HOSTNAME/$REGISTRY_ORG/$GITHUB_PAYLOAD_NAME:latest
-  #           $REGISTRY_HOSTNAME/$REGISTRY_ORG/$GITHUB_PAYLOAD_NAME:$VERSION
-  #           $REGISTRY_HOSTNAME/$REGISTRY_ORG/$GITHUB_PAYLOAD_NAME:$GITHUB_SHA
-  #     - name: Scan for vulnerabilities
-  #       uses: crazy-max/ghaction-container-scan@v3
-  #       with:
-  #         image: $REGISTRY_HOSTNAME/$REGISTRY_ORG/$GITHUB_PAYLOAD_NAME:latest
-  #         dockerfile: Containerfile
-  #         severity: $IMAGE_SCAN_SEVERITY
-  #         severity_threshold: $IMAGE_SCAN_SEVERITY_THRESHOLD
-  #         annotations: $IMAGE_SCAN_ANNOTATIONS
-  #       env:
-  #         TRIVY_TIMEOUT: $IMAGE_SCAN_TRIVY_TIMEOUT
-  #     - name: Push image to GitHub
-  #       run: |
-  #         docker push -a $REGISTRY_HOSTNAME/$REGISTRY_ORG/$GITHUB_PAYLOAD_NAME
+  workflow_call:
+    inputs:
+      artifactName:
+        required: false
+        description: If provided, downloads a previously uploaded artifact (has to be in the same workflow). Both artifactPath and artifactName have to be passed.
+        default: ""
+        type: string
+      artifactPath:
+        required: false
+        description: If provided, downloads a previously uploaded artifact (has to be in the same workflow). Both artifactPath and artifactName have to be passed.
+        default: ""
+        type: string
+      botEmail:
+        required: false
+        description: The email of the bot that will appear in the GitOps commit
+        default: dev.bot@parcellab.com
+        type: string
+      deploymentRepoPath:
+        required: false
+        description: The path within the deployment repository that holds all version files
+        default: namespaces
+        type: string
+      deploymentRepoURL:
+        required: false
+        description: The repository within Github that holds the version file to deploy via GitOps
+        default: parcelLab/deployment
+        type: string
+      imageTargets:
+        required: false
+        description: If provided, sets targets for as many image builds as targets specified
+        default: ""
+        type: string
+      preScript:
+        required: false
+        description: If provided, runs a script after repo checkout and before the docker image is built. Useful in case that you need to build a package outside of the docker image (and load the artifacts via copy).
+        default: ""
+        type: string
+      registryHostname:
+        required: false
+        description: The hostname for the container registry
+        default: ghcr.io
+        type: string
+      registryOrg:
+        required: false
+        description: The registry organization
+        default: parcellab
+        type: string
+      registryUsername:
+        required: false
+        description: The username for the container registry
+        default: parcellab-dev-bot
+        type: string
+      repository_kind:
+        required: false
+        description: The kind of repository (github or ecr)
+        default: "github"
+        type: string
+      runner:
+        required: false
+        description: Runner type
+        default: ubuntu-latest
+        type: string
+      sentryOrg:
+        required: false
+        description: The Sentry organization that will hold the deployment
+        default: ""
+        type: string
+      sentryProject:
+        required: false
+        description: The slug of the organization name in Sentry
+        default: ""
+        type: string
+      sentryUrl:
+        required: false
+        description: The URL used to connect to Sentry. (Only required for Self-Hosted Sentry).
+        default: "https://sentry.io/"
+        type: string
+      sentryEnvironment:
+        required: false
+        description: Slug of the environment used by the application to report error to Sentry
+        default: ""
+        type: string
+      slackChannelProd:
+        required: false
+        description: The Slack channel id to show production deployments
+        default: ""
+        type: string
+      slackChannelStaging:
+        required: false
+        description: The Slack channel id to show staging deployments
+        default: ""
+        type: string
+      slackChannelTest:
+        required: false
+        description: The Slack channel id to show test deployments
+        default: ""
+        type: string
+      versionFilePath:
+        required: false
+        description: The relative file path to the folder that holds the application Kubernetes values
+        default: values.yaml
+        type: string
+        
+jobs:
+  github:
+    if: $REPOSITORY_KIND == 'github'
+    environment: $GITHUB_PAYLOAD_ENVIRONMENT
+    runs-on: $RUNNER
+    steps:
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: $REGISTRY_HOSTNAME
+          username: $REGISTRY_USERNAME
+          password: $REPO_ACCESS_TOKEN
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          build-args: |
+            GITHUB_SHA=$GITHUB_SHA
+            VERSION=$VERSION
+            APP_NAME=$GITHUB_PAYLOAD_NAME
+            ENVIRONMENT=$GITHUB_PAYLOAD_ENVIRONMENT
+            NPM_GITHUB_TOKEN=$NPM_GITHUB_READ_TOKEN
+          cache-from: type=registry,ref=$REGISTRY_HOSTNAME/$REGISTRY_ORG/$GITHUB_PAYLOAD_NAME
+          cache-to: type=inline
+          context: $GITHUB_PAYLOAD_CONTEXT
+          load: true
+          file: $GITHUB_PAYLOAD_FILE
+          platforms: linux/amd64
+          tags: |
+            $REGISTRY_HOSTNAME/$REGISTRY_ORG/$GITHUB_PAYLOAD_NAME:latest
+            $REGISTRY_HOSTNAME/$REGISTRY_ORG/$GITHUB_PAYLOAD_NAME:$VERSION
+            $REGISTRY_HOSTNAME/$REGISTRY_ORG/$GITHUB_PAYLOAD_NAME:$GITHUB_SHA
+      - name: Scan for vulnerabilities
+        uses: crazy-max/ghaction-container-scan@v3
+        with:
+          image: $REGISTRY_HOSTNAME/$REGISTRY_ORG/$GITHUB_PAYLOAD_NAME:latest
+          dockerfile: Containerfile
+          severity: $IMAGE_SCAN_SEVERITY
+          severity_threshold: $IMAGE_SCAN_SEVERITY_THRESHOLD
+          annotations: $IMAGE_SCAN_ANNOTATIONS
+        env:
+          TRIVY_TIMEOUT: $IMAGE_SCAN_TRIVY_TIMEOUT
+      - name: Push image to GitHub
+        run: |
+          docker push -a $REGISTRY_HOSTNAME/$REGISTRY_ORG/$GITHUB_PAYLOAD_NAME
 
-  # ecr:
-    # if: $REPOSITORY_KIND == 'ecr'
-    # environment: $GITHUB_PAYLOAD_ENVIRONMENT
-    # runs-on: $RUNNER
-  steps:
-    - name: Configure AWS credentials
-      if: $REPOSITORY_KIND == 'ecr'
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-access-key-id: $IMAGE_SCAN_TRIVY_TIMEOUT
-        aws-secret-access-key: $AWS_SECRET_ACCESS_KEY
-        aws-region: eu-central-1
-    - name: Create ECR repository if it doesn't exist
-      run: |
-        aws ecr describe-repositories --repository-names $GITHUB_PAYLOAD_NAME || \
-        aws ecr create-repository --repository-name $GITHUB_PAYLOAD_NAME
-        LIFECYCLE_POLICY='{"rules":[{"rulePriority":1,"description":"Keep last 500 images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":500},"action":{"type":"expire"}}]}'
-        aws ecr put-lifecycle-policy --repository-name $GITHUB_PAYLOAD_NAME --lifecycle-policy-text "$LIFECYCLE_POLICY"
-    - name: Login to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v2
-    - name: Build image
-      uses: docker/build-push-action@v6
-      with:
-        build-args: |
-          GITHUB_SHA=$GITHUB_SHA
-          VERSION=$VERSION
-          APP_NAME=$GITHUB_PAYLOAD_NAME
-          ENVIRONMENT=$GITHUB_PAYLOAD_ENVIRONMENT
-          NPM_GITHUB_TOKEN=$NPM_GITHUB_READ_TOKEN
-        cache-from: type=registry,ref=$REGISTRY_HOSTNAME/$REGISTRY_ORG/$GITHUB_PAYLOAD_NAME
-        cache-to: type=inline
-        context: $GITHUB_PAYLOAD_CONTEXT
-        load: true
-        file: $GITHUB_PAYLOAD_FILE
-        platforms: linux/amd64
-        tags: |
-          $ECR/$GITHUB_PAYLOAD_NAME:latest
-          $ECR/$GITHUB_PAYLOAD_NAME:$VERSION
-          $ECR/$GITHUB_PAYLOAD_NAME:$GITHUB_SHA
-    - name: Scan for vulnerabilities
-      if: $REPOSITORY_KIND == 'ecr'
-      uses: crazy-max/ghaction-container-scan@v3
-      with:
-        image: $ECR/$GITHUB_PAYLOAD_NAME:latest
-        dockerfile: Containerfile
-        severity: $IMAGE_SCAN_SEVERITY
-        severity_threshold: $IMAGE_SCAN_SEVERITY_THRESHOLD
-        annotations: $IMAGE_SCAN_ANNOTATIONS
-      env:
-        TRIVY_TIMEOUT: $IMAGE_SCAN_TRIVY_TIMEOUT
-    - name: Push image to ECR
-      if: $REPOSITORY_KIND == 'ecr'
-      run: |
-        docker push -a $ECR/$GITHUB_PAYLOAD_NAME
+  ecr:
+    if: $REPOSITORY_KIND == 'ecr'
+    environment: $GITHUB_PAYLOAD_ENVIRONMENT
+    runs-on: $RUNNER
+    steps:
+      - name: Configure AWS credentials
+        if: $REPOSITORY_KIND == 'ecr'
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: $IMAGE_SCAN_TRIVY_TIMEOUT
+          aws-secret-access-key: $AWS_SECRET_ACCESS_KEY
+          aws-region: eu-central-1
+      - name: Create ECR repository if it doesn't exist
+        run: |
+          aws ecr describe-repositories --repository-names $GITHUB_PAYLOAD_NAME || \
+          aws ecr create-repository --repository-name $GITHUB_PAYLOAD_NAME
+          LIFECYCLE_POLICY='{"rules":[{"rulePriority":1,"description":"Keep last 500 images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":500},"action":{"type":"expire"}}]}'
+          aws ecr put-lifecycle-policy --repository-name $GITHUB_PAYLOAD_NAME --lifecycle-policy-text "$LIFECYCLE_POLICY"
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          build-args: |
+            GITHUB_SHA=$GITHUB_SHA
+            VERSION=$VERSION
+            APP_NAME=$GITHUB_PAYLOAD_NAME
+            ENVIRONMENT=$GITHUB_PAYLOAD_ENVIRONMENT
+            NPM_GITHUB_TOKEN=$NPM_GITHUB_READ_TOKEN
+          cache-from: type=registry,ref=$REGISTRY_HOSTNAME/$REGISTRY_ORG/$GITHUB_PAYLOAD_NAME
+          cache-to: type=inline
+          context: $GITHUB_PAYLOAD_CONTEXT
+          load: true
+          file: $GITHUB_PAYLOAD_FILE
+          platforms: linux/amd64
+          tags: |
+            $ECR/$GITHUB_PAYLOAD_NAME:latest
+            $ECR/$GITHUB_PAYLOAD_NAME:$VERSION
+            $ECR/$GITHUB_PAYLOAD_NAME:$GITHUB_SHA
+      - name: Scan for vulnerabilities
+        if: $REPOSITORY_KIND == 'ecr'
+        uses: crazy-max/ghaction-container-scan@v3
+        with:
+          image: $ECR/$GITHUB_PAYLOAD_NAME:latest
+          dockerfile: Containerfile
+          severity: $IMAGE_SCAN_SEVERITY
+          severity_threshold: $IMAGE_SCAN_SEVERITY_THRESHOLD
+          annotations: $IMAGE_SCAN_ANNOTATIONS
+        env:
+          TRIVY_TIMEOUT: $IMAGE_SCAN_TRIVY_TIMEOUT
+      - name: Push image to ECR
+        if: $REPOSITORY_KIND == 'ecr'
+        run: |
+          docker push -a $ECR/$GITHUB_PAYLOAD_NAME
