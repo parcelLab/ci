@@ -446,7 +446,7 @@ jobs:
           docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}
 
   commit:
-    needs: [initialize]
+    needs: [initialize, image-build-ecr-single]
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
     steps:
