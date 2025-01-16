@@ -73,7 +73,7 @@ on:
 
 jobs:
   github:
-    if: inputs.repository_kind == 'github'
+    if: ${{ inputs.repository_kind }} == 'github'
     environment: ${{ inputs.GITHUB_PAYLOAD_ENVIRONMENT }}
     runs-on: ${{ inputs.runner }}
     strategy:
@@ -121,7 +121,7 @@ jobs:
           docker push -a ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.GITHUB_PAYLOAD_NAME }}-${{ matrix.containerfile_targets }}
 
   ecr:
-    if: inputs.repository_kind == 'ecr'
+    if: ${{ inputs.repository_kind }} == 'ecr'
     environment: ${{ inputs.GITHUB_PAYLOAD_ENVIRONMENT }}
     runs-on: ${{ inputs.runner }}
     strategy:

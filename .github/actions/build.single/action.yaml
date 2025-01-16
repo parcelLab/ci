@@ -75,7 +75,7 @@ on:
 
 jobs:
   github:
-    if: inputs.repository_kind == 'github'
+    if: ${{ inputs.repository_kind }} == 'github'
     environment: ${{ inputs.GITHUB_PAYLOAD_ENVIRONMENT }}
     runs-on: ${{ inputs.runner }}
     steps:
@@ -119,12 +119,12 @@ jobs:
           docker push -a ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.GITHUB_PAYLOAD_NAME }}
 
   ecr:
-    if: inputs.repository_kind == 'ecr'
+    if: ${{ inputs.repository_kind }} == 'ecr'
     environment: ${{ inputs.GITHUB_PAYLOAD_ENVIRONMENT }}
     runs-on: ${{ inputs.runner }}
     steps:
       - name: Configure AWS credentials
-        if: inputs.repository_kind == 'ecr'
+        if: ${{ inputs.repository_kind }} == 'ecr'
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ inputs.AWS_ACCESS_KEY_ID }}
@@ -159,7 +159,7 @@ jobs:
             ${{ steps.login-ecr.outputs.registry }}/${{ inputs.GITHUB_PAYLOAD_NAME }}:${{ inputs.VERSION }}
             ${{ steps.login-ecr.outputs.registry }}/${{ inputs.GITHUB_PAYLOAD_NAME }}:${{ inputs.GITHUB_SHA }}
       - name: Scan for vulnerabilities
-        if: inputs.repository_kind == 'ecr'
+        if: ${{ inputs.repository_kind }} == 'ecr'
         uses: crazy-max/ghaction-container-scan@v3
         with:
           image: ${{ steps.login-ecr.outputs.registry }}/${{ inputs.GITHUB_PAYLOAD_NAME }}:latest
@@ -170,6 +170,6 @@ jobs:
         env:
           TRIVY_TIMEOUT: ${{ inputs.IMAGE_SCAN_TRIVY_TIMEOUT }}
       - name: Push image to ECR
-        if: inputs.repository_kind == 'ecr'
+        if: ${{ inputs.repository_kind }} == 'ecr'
         run: |
           docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ inputs.GITHUB_PAYLOAD_NAME }}
