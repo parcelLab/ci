@@ -219,7 +219,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
       - name: Build images in a matrix
-        if: inputs.imageTargets != ''.
+        if: inputs.imageTargets != ''
         uses: ./github/actions/ci/.github/actions/build.matrix
         with:
           artifactName: ${{ inputs.artifactName }}
