@@ -182,7 +182,7 @@ jobs:
 
       - name: Build single image
         if: inputs.imageTargets == ''
-        uses: ./github/actions/ci/.github/actions/build.single/action.yaml@fix/kubernetes-jobs-order
+        uses: parcelLab/ci/.github/actions/build.yaml@fix/kubernetes-jobs-order
         env:
           GITHUB_SHA: ${{ github.sha }}
           GITHUB_PAYLOAD_ENVIRONMENT: ${{ github.event.deployment.payload.env }}
@@ -205,33 +205,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
           ECR: ${{ env.ECR }}
-      # - name: Build images in a matrix
-      #   if: inputs.imageTargets != ''
-      #   uses: ./github/actions/ci/.github/actions/build.matrix
-      #   env:
-      #     GITHUB_SHA: ${{ github.sha }}
-      #     GITHUB_PAYLOAD_ENVIRONMENT: ${{ github.event.deployment.payload.env }}
-      #     GITHUB_PAYLOAD_NAME: ${{ github.event.deployment.payload.name }}
-      #     GITHUB_PAYLOAD_CONTEXT: ${{ github.event.deployment.payload.container.context }}
-      #     GITHUB_PAYLOAD_FILE: ${{ github.event.deployment.payload.container.file }}
-      #     IMAGE_SCAN_SEVERITY: LOW
-      #     IMAGE_SCAN_SEVERITY_THRESHOLD: CRITICAL
-      #     IMAGE_SCAN_ANNOTATIONS: true
-      #     IMAGE_SCAN_TRIVY_TIMEOUT: 10m
-      #     imageTargets: ${{ inputs.imageTargets }}
-      #     REGISTRY_HOSTNAME: ${{ inputs.registryHostname }}
-      #     REGISTRY_ORG: ${{ inputs.registryOrg }}
-      #     REGISTRY_USERNAME: ${{ inputs.registryUsername }}
-      #     REPOSITORY_KIND: ${{ inputs.repository_kind }}
-      #     RUNNER: ${{ inputs.runner }}
-      #     VERSION: ${{ needs.initialize.outputs.version }}
-      #     NPM_GITHUB_READ_TOKEN: ${{ secrets.npmGithubReadToken }}
-      #     REPO_ACCESS_TOKEN: ${{ secrets.repoAccessToken }}
-      #     AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      #     AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      #     AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-      #     ECR: ${{ env.ECR }}
-
+          imageTargets: ${{ inputs.imageTargets }}
 
   commit:
     needs: [build]
