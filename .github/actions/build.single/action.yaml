@@ -2,6 +2,21 @@ name: Reusable single image build workflow with ECR or GitHub Registry
 on:
   workflow_call:
     inputs:
+      GITHUB_SHA:
+        required: true
+        type: string
+      GITHUB_PAYLOAD_ENVIRONMENT:
+        required: true
+        type: string
+      GITHUB_PAYLOAD_NAME:
+        required: true
+        type: string
+      GITHUB_PAYLOAD_CONTEXT:
+        required: true
+        type: string
+      GITHUB_PAYLOAD_FILE:
+        required: true
+        type: string
       IMAGE_SCAN_SEVERITY:
         required: true
         type: string
