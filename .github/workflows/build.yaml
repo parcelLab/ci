@@ -13,19 +13,19 @@ on:
         default: ""
         type: string
       IMAGE_SCAN_SEVERITY:
-        required: true
+        required: false
         default: LOW
         type: string
       IMAGE_SCAN_SEVERITY_THRESHOLD:
-        required: true
+        required: false
         default: CRITICAL
         type: string
       IMAGE_SCAN_ANNOTATIONS:
-        required: true
+        required: false
         default: true
         type: boolean
       IMAGE_SCAN_TRIVY_TIMEOUT:
-        required: true
+        required: false
         default: 10m
         type: string
       imageTargets:
