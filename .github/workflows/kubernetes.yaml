@@ -187,11 +187,7 @@ jobs:
       repository_kind: ${{ inputs.repository_kind }}
       runner: ${{ inputs.runner }}
       version: ${{ needs.initialize.outputs.version }}
-    secrets:
-      npmGithubReadToken: ${{ secrets.npmGithubReadToken }}
-      repoAccessToken: ${{ secrets.repoAccessToken }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    secrets: inherit
 
   commit:
     needs: [build]
