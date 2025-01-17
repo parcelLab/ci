@@ -12,22 +12,6 @@ on:
         description: If provided, downloads a previously uploaded artifact (has to be in the same workflow). Both artifactPath and artifactName have to be passed.
         default: ""
         type: string
-      IMAGE_SCAN_SEVERITY:
-        required: false
-        default: LOW
-        type: string
-      IMAGE_SCAN_SEVERITY_THRESHOLD:
-        required: false
-        default: CRITICAL
-        type: string
-      IMAGE_SCAN_ANNOTATIONS:
-        required: false
-        default: true
-        type: boolean
-      IMAGE_SCAN_TRIVY_TIMEOUT:
-        required: false
-        default: 10m
-        type: string
       imageTargets:
         required: false
         description: If provided, sets targets for as many image builds as targets specified
@@ -79,6 +63,12 @@ on:
       AWS_SECRET_ACCESS_KEY:
         required: true
         description: Secet for AWS access key ID
+
+env:
+  IMAGE_SCAN_SEVERITY: LOW
+  IMAGE_SCAN_SEVERITY_THRESHOLD: CRITICAL
+  IMAGE_SCAN_ANNOTATIONS: true
+  IMAGE_SCAN_TRIVY_TIMEOUT: 10m
 
 jobs:
   build-github-single:
@@ -133,11 +123,11 @@ jobs:
         with:
           image: ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:latest
           dockerfile: Containerfile
-          severity: ${{ inputs.IMAGE_SCAN_SEVERITY }}
-          severity_threshold: ${{ inputs.IMAGE_SCAN_SEVERITY_THRESHOLD }}
-          annotations: ${{ inputs.IMAGE_SCAN_ANNOTATIONS }}
+          severity: ${{ env.IMAGE_SCAN_SEVERITY }}
+          severity_threshold: ${{ env.IMAGE_SCAN_SEVERITY_THRESHOLD }}
+          annotations: ${{ env.IMAGE_SCAN_ANNOTATIONS }}
         env:
-          TRIVY_TIMEOUT: ${{ inputs.IMAGE_SCAN_TRIVY_TIMEOUT }}
+          TRIVY_TIMEOUT: ${{ env.IMAGE_SCAN_TRIVY_TIMEOUT }}
       - name: Push image to GitHub
         run: |
           docker push -a ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
@@ -205,11 +195,11 @@ jobs:
         with:
           image: ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:latest
           dockerfile: Containerfile
-          severity: ${{ inputs.IMAGE_SCAN_SEVERITY }}
-          severity_threshold: ${{ inputs.IMAGE_SCAN_SEVERITY_THRESHOLD }}
-          annotations: ${{ inputs.IMAGE_SCAN_ANNOTATIONS }}
+          severity: ${{ env.IMAGE_SCAN_SEVERITY }}
+          severity_threshold: ${{ env.IMAGE_SCAN_SEVERITY_THRESHOLD }}
+          annotations: ${{ env.IMAGE_SCAN_ANNOTATIONS }}
         env:
-          TRIVY_TIMEOUT: ${{ inputs.IMAGE_SCAN_TRIVY_TIMEOUT }}
+          TRIVY_TIMEOUT: ${{ env.IMAGE_SCAN_TRIVY_TIMEOUT }}
       - name: Push image to ECR
         if: inputs.repository_kind == 'ecr'
         run: |
@@ -271,11 +261,11 @@ jobs:
         with:
           image: ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:latest
           dockerfile: Containerfile
-          severity: ${{ inputs.IMAGE_SCAN_SEVERITY }}
-          severity_threshold: ${{ inputs.IMAGE_SCAN_SEVERITY_THRESHOLD }}
-          annotations: ${{ inputs.IMAGE_SCAN_ANNOTATIONS }}
+          severity: ${{ env.IMAGE_SCAN_SEVERITY }}
+          severity_threshold: ${{ env.IMAGE_SCAN_SEVERITY_THRESHOLD }}
+          annotations: ${{ env.IMAGE_SCAN_ANNOTATIONS }}
         env:
-          TRIVY_TIMEOUT: ${{ inputs.IMAGE_SCAN_TRIVY_TIMEOUT }}
+          TRIVY_TIMEOUT: ${{ env.IMAGE_SCAN_TRIVY_TIMEOUT }}
       - name: Push ${{ matrix.containerfile_targets }} image to ECR
         run: |
           docker push -a ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}
@@ -345,11 +335,11 @@ jobs:
         with:
           image: ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:latest
           dockerfile: Containerfile
-          severity: ${{ inputs.IMAGE_SCAN_SEVERITY }}
-          severity_threshold: ${{ inputs.IMAGE_SCAN_SEVERITY_THRESHOLD }}
-          annotations: ${{ inputs.IMAGE_SCAN_ANNOTATIONS }}
+          severity: ${{ env.IMAGE_SCAN_SEVERITY }}
+          severity_threshold: ${{ env.IMAGE_SCAN_SEVERITY_THRESHOLD }}
+          annotations: ${{ env.IMAGE_SCAN_ANNOTATIONS }}
         env:
-          TRIVY_TIMEOUT: ${{ inputs.IMAGE_SCAN_TRIVY_TIMEOUT }}
+          TRIVY_TIMEOUT: ${{ env.IMAGE_SCAN_TRIVY_TIMEOUT }}
       - name: Push ${{ matrix.containerfile_targets }} image to ECR
         run: |
           docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}
