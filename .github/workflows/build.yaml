@@ -23,7 +23,7 @@ on:
       IMAGE_SCAN_ANNOTATIONS:
         required: true
         default: true
-        type: bool
+        type: boolean
       IMAGE_SCAN_TRIVY_TIMEOUT:
         required: true
         default: 10m
