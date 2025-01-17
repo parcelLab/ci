@@ -343,4 +343,3 @@ jobs:
       - name: Push ${{ matrix.containerfile_targets }} image to ECR
         run: |
           docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}
-
