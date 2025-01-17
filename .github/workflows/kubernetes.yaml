@@ -173,7 +173,7 @@ jobs:
 
   build:
     needs: [initialize]
-    uses: parcelLab/ci/.github/workflows/build.yaml@separate-build-step
+    uses: parcelLab/ci/.github/workflows/build-image.yaml@separate-build-step
     with:
       artifactName: ${{ inputs.artifactName }}
       artifactPath: ${{ inputs.artifactPath }}
