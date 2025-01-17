@@ -188,7 +188,7 @@ jobs:
     secrets: inherit
 
   commit:
-    needs: [initialize,build]
+    needs: [initialize, build]
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
     steps:
