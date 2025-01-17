@@ -50,19 +50,19 @@ on:
       version:
         required: true
         type: string
-    secrets:
-      npmGithubReadToken:
-        required: true
-        description: The Github token with permissions to read NPM private packages
-      repoAccessToken:
-        required: true
-        description: The Github token to perform operations cross-repo (not github.token!)
-      AWS_ACCESS_KEY_ID:
-        required: true
-        description: Access key ID for AWS credentials
-      AWS_SECRET_ACCESS_KEY:
-        required: true
-        description: Secet for AWS access key ID
+    # secrets:
+    #   npmGithubReadToken:
+    #     required: true
+    #     description: The Github token with permissions to read NPM private packages
+    #   repoAccessToken:
+    #     required: true
+    #     description: The Github token to perform operations cross-repo (not github.token!)
+    #   AWS_ACCESS_KEY_ID:
+    #     required: true
+    #     description: Access key ID for AWS credentials
+    #   AWS_SECRET_ACCESS_KEY:
+    #     required: true
+    #     description: Secet for AWS access key ID
 
 env:
   IMAGE_SCAN_SEVERITY: LOW
