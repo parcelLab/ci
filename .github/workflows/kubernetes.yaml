@@ -174,7 +174,6 @@ jobs:
   build:
     needs: [initialize]
     environment: ${{ github.event.deployment.payload.env }}
-    runs-on: ${{ inputs.runner }}
     uses: parcelLab/ci/.github/workflows/build.yaml@2d7756d76f26c5b18b11d76b756aca9873b92603
     with:
       artifactName: ${{ inputs.artifactName }}
