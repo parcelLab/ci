@@ -57,6 +57,11 @@ on:
         description: The kind of repository (github or ecr)
         default: "github"
         type: string
+      enableContainerScan:
+        required: false
+        description: Apply the container scan
+        default: true
+        type: boolean
       runner:
         required: false
         description: Runner type
@@ -183,6 +188,7 @@ jobs:
       registryOrg: ${{ inputs.registryOrg }}
       registryUsername: ${{ inputs.registryUsername }}
       repository_kind: ${{ inputs.repository_kind }}
+      enableContainerScan: ${{ inputs.enableContainerScan }}
       runner: ${{ inputs.runner }}
       version: ${{ needs.initialize.outputs.version }}
     secrets: inherit
