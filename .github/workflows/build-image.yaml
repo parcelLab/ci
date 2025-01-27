@@ -42,16 +42,16 @@ on:
         description: The kind of repository (github or ecr)
         default: "github"
         type: string
-      runner:
-        required: false
-        description: Runner type
-        default: ubuntu-latest
-        type: string
       enableContainerScan:
         required: false
         description: Apply the container scan
         default: true
         type: boolean
+      runner:
+        required: false
+        description: Runner type
+        default: ubuntu-latest
+        type: string
       version:
         required: true
         type: string
