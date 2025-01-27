@@ -42,6 +42,11 @@ on:
         description: The kind of repository (github or ecr)
         default: "github"
         type: string
+      enableContainerScan:
+        required: false
+        description: Apply the container scan
+        default: true
+        type: boolean
       runner:
         required: false
         description: Runner type
@@ -106,6 +111,7 @@ jobs:
             ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:${{ inputs.version }}
             ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:${{ github.sha }}
       - name: Scan for vulnerabilities
+        if: inputs.enableContainerScan
         uses: crazy-max/ghaction-container-scan@v3
         with:
           image: ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:latest
@@ -166,7 +172,7 @@ jobs:
             APP_NAME=${{ github.event.deployment.payload.name }}
             ENVIRONMENT=${{ github.event.deployment.payload.env }}
             NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
-          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
+          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ github.event.deployment.payload.name }}
           cache-to: type=inline
           context: ${{ github.event.deployment.payload.container.context }}
           load: true
@@ -177,7 +183,7 @@ jobs:
             ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:${{ inputs.version }}
             ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:${{ github.sha }}
       - name: Scan for vulnerabilities
-        if: inputs.repository_kind == 'ecr'
+        if: inputs.enableContainerScan
         uses: crazy-max/ghaction-container-scan@v3
         with:
           image: ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:latest
@@ -245,6 +251,7 @@ jobs:
           target: ${{ matrix.containerfile_targets }}
       - name: Scan for vulnerabilities
         uses: crazy-max/ghaction-container-scan@v3
+        if: inputs.enableContainerScan
         with:
           image: ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:latest
           dockerfile: Containerfile
@@ -306,7 +313,7 @@ jobs:
             APP_NAME=${{ github.event.deployment.payload.name }}
             ENVIRONMENT=${{ github.event.deployment.payload.env }}
             NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
-          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
+          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ github.event.deployment.payload.name }}
           cache-to: type=inline
           context: ${{ github.event.deployment.payload.container.context }}
           load: true
@@ -318,6 +325,7 @@ jobs:
             ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:${{ github.sha }}
           target: ${{ matrix.containerfile_targets }}
       - name: Scan for vulnerabilities
+        if: inputs.enableContainerScan
         uses: crazy-max/ghaction-container-scan@v3
         with:
           image: ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:latest
