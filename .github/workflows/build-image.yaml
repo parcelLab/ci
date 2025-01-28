@@ -174,7 +174,6 @@ jobs:
             NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
           cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ github.event.deployment.payload.name }}:cache
           cache-to: type=inline
-          #          cache-to: type=registry,ref=${{ inputs.registryHostname }}/${{ github.event.deployment.payload.name }}:cache,mode=max
           context: ${{ github.event.deployment.payload.container.context }}
           load: true
           file: ${{ github.event.deployment.payload.container.file }}
@@ -316,7 +315,6 @@ jobs:
             NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
           cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ github.event.deployment.payload.name }}:cache
           cache-to: type=inline
-          #          cache-to: type=registry,ref=${{ inputs.registryHostname }}/${{ github.event.deployment.payload.name }}:cache,mode=max
           context: ${{ github.event.deployment.payload.container.context }}
           load: true
           file: ${{ github.event.deployment.payload.container.file }}
