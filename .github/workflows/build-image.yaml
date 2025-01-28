@@ -172,8 +172,8 @@ jobs:
             APP_NAME=${{ github.event.deployment.payload.name }}
             ENVIRONMENT=${{ github.event.deployment.payload.env }}
             NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
-          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ github.event.deployment.payload.name }}
-          cache-to: type=inline
+          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ github.event.deployment.payload.name }}:cache
+          cache-to: type=registry,ref=${{ inputs.registryHostname }}/${{ github.event.deployment.payload.name }}:cache,mode=max
           context: ${{ github.event.deployment.payload.container.context }}
           load: true
           file: ${{ github.event.deployment.payload.container.file }}
@@ -313,8 +313,8 @@ jobs:
             APP_NAME=${{ github.event.deployment.payload.name }}
             ENVIRONMENT=${{ github.event.deployment.payload.env }}
             NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
-          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ github.event.deployment.payload.name }}
-          cache-to: type=inline
+          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ github.event.deployment.payload.name }}:cache
+          cache-to: type=registry,ref=${{ inputs.registryHostname }}/${{ github.event.deployment.payload.name }}:cache,mode=max
           context: ${{ github.event.deployment.payload.container.context }}
           load: true
           file: ${{ github.event.deployment.payload.container.file }}
