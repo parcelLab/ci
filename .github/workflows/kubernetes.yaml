@@ -204,18 +204,23 @@ jobs:
           repository: ${{ inputs.deploymentRepoURL }}
           path: remote
           token: ${{ secrets.repoAccessToken }}
-          ref: main
+          ref: INF-2226/migrate-playground
       # Legacy
       - if: github.event.deployment.payload.schemaVersion != 'v2'
         name: Update ${{ github.event.deployment.payload.name }} version for ${{ github.event.deployment.environment }} values
         uses: mikefarah/yq@v4.30.8
         with:
           cmd: yq '(.${{ github.event.deployment.payload.chart }}.image.tag = "${{ needs.initialize.outputs.version }}")' -i remote/${{ inputs.deploymentRepoPath }}/${{ github.event.deployment.payload.namespace }}/${{ github.event.deployment.payload.env }}/${{ github.event.deployment.payload.name }}/${{ inputs.versionFilePath }}
-      - if: github.event.deployment.payload.schemaVersion == 'v2'
+      - if: github.event.deployment.payload.schemaVersion == 'v2' && github.event.deployment.payload.env != "playground"
         name: Update ${{ github.event.deployment.payload.name }} version for ${{ github.event.deployment.environment }} values
         uses: mikefarah/yq@v4.30.8
         with:
           cmd: yq '(.${{ github.event.deployment.payload.kubernetes.versionKey }} = "${{ needs.initialize.outputs.version }}")' -i remote/${{ inputs.deploymentRepoPath }}/${{ github.event.deployment.payload.kubernetes.namespace }}/${{ github.event.deployment.payload.env }}/${{ github.event.deployment.payload.name }}/${{ inputs.versionFilePath }}
+      - if: github.event.deployment.payload.schemaVersion == 'v2' && github.event.deployment.payload.env == "playground"
+        name: Update ${{ github.event.deployment.payload.name }} version for ${{ github.event.deployment.environment }} values
+        uses: mikefarah/yq@v4.30.8
+        with:
+          cmd: yq '(.${{ github.event.deployment.payload.kubernetes.versionKey }} = "${{ needs.initialize.outputs.version }}")' -i remote/${{ inputs.deploymentRepoPath }}/${{ github.event.deployment.payload.kubernetes.namespace }}/prod/${{ github.event.deployment.payload.name }}/values.playground.yaml
       - name: Commit deployment file
         run: |
           cd remote
