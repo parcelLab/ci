@@ -204,7 +204,7 @@ jobs:
           repository: ${{ inputs.deploymentRepoURL }}
           path: remote
           token: ${{ secrets.repoAccessToken }}
-          ref: INF-2226/migrate-playground
+          ref: main
       # Legacy
       - if: github.event.deployment.payload.schemaVersion != 'v2'
         name: Update ${{ github.event.deployment.payload.name }} version for ${{ github.event.deployment.environment }} values
@@ -234,7 +234,7 @@ jobs:
           repository: ${{ inputs.deploymentRepoURL }}
           directory: remote
           github_token: ${{ secrets.repoAccessToken }}
-          branch: INF-2226/migrate-playground
+          branch: main
           force: true
       - if: success()
         name: Successful ${{ github.event.deployment.payload.name }} deployment
