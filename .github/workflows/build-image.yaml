@@ -173,7 +173,7 @@ jobs:
             ENVIRONMENT=${{ github.event.deployment.payload.env }}
             NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
           cache-from: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}
-          cache-to: type=inline
+          cache-to: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }},mode=max
           context: ${{ github.event.deployment.payload.container.context }}
           load: true
           file: ${{ github.event.deployment.payload.container.file }}
