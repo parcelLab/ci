@@ -234,7 +234,7 @@ jobs:
           repository: ${{ inputs.deploymentRepoURL }}
           directory: remote
           github_token: ${{ secrets.repoAccessToken }}
-          branch: main
+          branch: INF-2226/migrate-playground
           force: true
       - if: success()
         name: Successful ${{ github.event.deployment.payload.name }} deployment
