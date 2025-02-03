@@ -313,8 +313,8 @@ jobs:
             APP_NAME=${{ github.event.deployment.payload.name }}
             ENVIRONMENT=${{ github.event.deployment.payload.env }}
             NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
-          cache-from: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:latest
-          cache-to: type=inline
+          cache-from: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:cache
+          cache-to: mode=max,image-manifest=true,oci-mediatypes=true,type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:cache
           context: ${{ github.event.deployment.payload.container.context }}
           load: true
           file: ${{ github.event.deployment.payload.container.file }}
