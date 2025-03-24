@@ -41,7 +41,7 @@ jobs:
     runs-on: ${{ inputs.runner }}
     steps:
       - name: Create Github release
-        uses: darioblanco/release-wizard@v2.0.3
+        uses: darioblanco/release-wizard@v2.0.4
         with:
           draft: ${{ inputs.draft }}
           prerelease: ${{ inputs.prerelease }}
