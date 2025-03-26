@@ -13,7 +13,7 @@ on:
         default: release-drafter.yaml
         type: string
     secrets:
-      repoAccessToken:
+      REPO_ACCESS_TOKEN:
         required: true
         description: The Github token to perform operations cross-repo (not secrets.GITHUB_TOKEN!)
 jobs:
