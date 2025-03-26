@@ -1,0 +1,21 @@
+template: |
+  $CHANGES
+categories:
+  - title: "🚀 Features"
+    labels:
+      - enhancement
+  - title: "🐛 Bug Fixes"
+    labels:
+      - bug
+  - title: "🧹 Chores"
+    labels:
+      - chore
+change-template: "- $TITLE (#$NUMBER) @$AUTHOR"
+no-changes-template: "* No changes"
+autolabeler:
+  - label: enhancement
+    title: "^feat:"
+  - label: bug
+    title: "^fix:"
+  - label: chore
+    title: "^chore:"
