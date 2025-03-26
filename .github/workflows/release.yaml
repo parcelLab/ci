@@ -1,6 +1,17 @@
 name: Reusable Release Drafter
 on:
   workflow_call:
+    inputs:
+      runner:
+        required: false
+        description: Runner type
+        default: ubuntu-latest
+        type: string
+      configName:
+        required: false
+        description: The path within the .github/ folder for the release drafter configuration
+        default: release-drafter.yaml
+        type: string
     secrets:
       repoAccessToken:
         required: true
@@ -12,6 +23,6 @@ jobs:
       - name: Update Release Draft
         uses: release-drafter/release-drafter@v6
         with:
-          config-name: release-drafter.yml
+          config-name: ${{ inputs.configName }}
         env:
           GITHUB_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
