@@ -38,6 +38,7 @@ on:
       disable-releaser:
         required: false
         description: A boolean indicating whether the releaser mode is disabled.
+        type: boolean
       latest:
         required: false
         description: A string indicating whether the release being created or updated should be marked as latest.
