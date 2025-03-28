@@ -50,6 +50,6 @@ jobs:
       - name: Update Release Draft
         uses: release-drafter/release-drafter@v6
         with:
-          config-name: ${{ inputs.configName }}
+          config-name: ${{ inputs.configName || '.github/release-drafter.yml'
         env:
           GITHUB_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
