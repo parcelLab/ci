@@ -11,6 +11,46 @@ on:
         required: false
         description: The path within the .github/ folder for the release drafter configuration
         type: string
+      name:
+        required: false
+        description: The name that will be used in the GitHub release that's created or updated. This will override any name-template specified in your release-drafter.yml if defined.
+        type: string
+      tag:
+        required: false
+        description: The tag name to be associated with the GitHub release that's created or updated. This will override any tag-template specified in your release-drafter.yml if defined.
+        type: string
+      version:
+        required: false
+        description: The version to be associated with the GitHub release that's created or updated. This will override any version calculated by the release-drafter.
+        type: string
+      publish:
+        required: false
+        description: A boolean indicating whether the release being created or updated should be immediately published. This may be useful if the output of a previous workflow step determines that a new version of your project has been (or will be) released, as with salsify/action-detect-and-tag-new-version.
+        type: boolean
+      prerelease:
+        required: false
+        description: A boolean indicating whether the release being created or updated is a prerelease.
+        type: boolean
+      prerelease-identifier:
+        required: false
+        description: A string indicating an identifier (alpha, beta, rc, etc), to increment the prerelease version. number
+        type: string
+      latest:
+        required: false
+        description: A string indicating whether the release being created or updated should be marked as latest.
+        type: string
+      commitish:
+        required: false
+        description: A string specifying the target branch for the release being created.
+        type: string
+      header:
+        required: false
+        description: A string that would be added before the template body.
+        type: string
+      footer:
+        required: false
+        description: A string that would be added after the template body.
+        type: string
     secrets:
       REPO_ACCESS_TOKEN:
         required: true
@@ -51,5 +91,15 @@ jobs:
         uses: release-drafter/release-drafter@v6
         with:
           config-name: ${{ inputs.configName || '.github/release-drafter.yml' }}
+          name: ${{ inputs.name }}
+          tag: ${{ inputs.tag }}
+          version: ${{ inputs.version }}
+          publish: ${{ inputs.publish }}
+          prerelease: ${{ inputs.prerelease }}
+          prerelease-identifier: ${{ inputs.prerelease-identifier }}
+          latest: ${{ inputs.latest }}
+          commitish: ${{ inputs.commitish }}
+          header: ${{ inputs.header }}
+          footer: ${{ inputs.footer }}
         env:
           GITHUB_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
