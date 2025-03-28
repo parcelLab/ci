@@ -59,38 +59,10 @@ jobs:
   release:
     runs-on: ${{ inputs.runner }}
     steps:
-      - name: Create Release Drafter config
-        if: inputs.configName == ''
-        run: |
-          mkdir -p .github
-          cat > .github/release-drafter.yml <<'EOF'
-          template: |
-            $CHANGES
-          categories:
-            - title: "🚀 Features"
-              labels:
-                - enhancement
-            - title: "🐛 Bug Fixes"
-              labels:
-                - bug
-            - title: "🧹 Chores"
-              labels:
-                - chore
-          change-template: "- $TITLE (#$NUMBER) @$AUTHOR"
-          no-changes-template: "* No changes"
-          autolabeler:
-            - label: enhancement
-              title: '^feat:'
-            - label: bug
-              title: '^fix:'
-            - label: chore
-              title: '^chore:'
-          EOF
-
       - name: Update Release Draft
         uses: release-drafter/release-drafter@v6
         with:
-          config-name: ${{ inputs.configName || 'release-drafter.yml' }}
+          config-name: 'release-drafter.yml'
           name: ${{ inputs.name }}
           tag: ${{ inputs.tag }}
           version: ${{ inputs.version }}
