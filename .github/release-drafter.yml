@@ -16,8 +16,11 @@ change-template: "- $TITLE (#$NUMBER) @$AUTHOR"
 no-changes-template: "* No changes"
 autolabeler:
   - label: enhancement
-    title: "^feat:"
+    title:
+      - "/^feat/"
   - label: bug
-    title: "^fix:"
+    title:
+      - "/^fix/"
   - label: chore
-    title: "^chore:"
+    title:
+      - "/^chore/"

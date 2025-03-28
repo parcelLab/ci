@@ -35,6 +35,9 @@ on:
         required: false
         description: A string indicating an identifier (alpha, beta, rc, etc), to increment the prerelease version. number
         type: string
+      disable-releaser:
+        required: false
+        description: A boolean indicating whether the releaser mode is disabled.
       latest:
         required: false
         description: A string indicating whether the release being created or updated should be marked as latest.
@@ -69,6 +72,7 @@ jobs:
           publish: ${{ inputs.publish }}
           prerelease: ${{ inputs.prerelease }}
           prerelease-identifier: ${{ inputs.prerelease-identifier }}
+          disable-releaser: ${{ inputs.disable-releaser }}
           latest: ${{ inputs.latest }}
           commitish: ${{ inputs.commitish }}
           header: ${{ inputs.header }}
