@@ -62,7 +62,7 @@ jobs:
       - name: Update Release Draft
         uses: release-drafter/release-drafter@v6
         with:
-          config-name: 'release-drafter.yml'
+          config-name: 'release-drafter.yaml'
           name: ${{ inputs.name }}
           tag: ${{ inputs.tag }}
           version: ${{ inputs.version }}
