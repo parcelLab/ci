@@ -10,7 +10,6 @@ on:
       configName:
         required: false
         description: The path within the .github/ folder for the release drafter configuration
-        default: release-drafter.yaml
         type: string
     secrets:
       REPO_ACCESS_TOKEN:
@@ -20,6 +19,34 @@ jobs:
   release:
     runs-on: ${{ inputs.runner }}
     steps:
+      - name: Create Release Drafter config
+        if: inputs.configName == ''
+        run: |
+          mkdir -p .github
+          cat > .github/release-drafter.yml <<'EOF'
+          template: |
+            $CHANGES
+          categories:
+            - title: "🚀 Features"
+              labels:
+                - enhancement
+            - title: "🐛 Bug Fixes"
+              labels:
+                - bug
+            - title: "🧹 Chores"
+              labels:
+                - chore
+          change-template: "- $TITLE (#$NUMBER) @$AUTHOR"
+          no-changes-template: "* No changes"
+          autolabeler:
+            - label: enhancement
+              title: '^feat:'
+            - label: bug
+              title: '^fix:'
+            - label: chore
+              title: '^chore:'
+          EOF
+
       - name: Update Release Draft
         uses: release-drafter/release-drafter@v6
         with:
