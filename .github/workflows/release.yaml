@@ -1,36 +1,60 @@
-name: Reusable Release
+name: Reusable Release Drafter
 on:
   workflow_call:
     inputs:
-      draft:
-        required: false
-        description: Defines if the release is a draft (not published directly). Defaults to true
-        default: true
-        type: boolean
-      prerelease:
-        required: false
-        description: Defines if the release to create is a prerelease. Defaults to false
-        default: false
-        type: boolean
       runner:
         required: false
         description: Runner type
         default: ubuntu-latest
         type: string
-      targetBranch:
-        required: false
-        description: The target branch for the release being created
-        default: main
-        type: string
-      taskPrefix:
-        required: false
-        description: The prefix that identifies task ids in the commits
-        default: JIR-
-        type: string
-      templatePath:
+      configName:
         required: false
         description: The path within the .github/ folder for the release drafter configuration
-        default: release-wizard.md
+        type: string
+      name:
+        required: false
+        description: The name that will be used in the GitHub release that's created or updated. This will override any name-template specified in your release-drafter.yml if defined.
+        type: string
+      tag:
+        required: false
+        description: The tag name to be associated with the GitHub release that's created or updated. This will override any tag-template specified in your release-drafter.yml if defined.
+        type: string
+      version:
+        required: false
+        description: The version to be associated with the GitHub release that's created or updated. This will override any version calculated by the release-drafter.
+        type: string
+      publish:
+        required: false
+        description: A boolean indicating whether the release being created or updated should be immediately published. This may be useful if the output of a previous workflow step determines that a new version of your project has been (or will be) released, as with salsify/action-detect-and-tag-new-version.
+        type: boolean
+      prerelease:
+        required: false
+        description: A boolean indicating whether the release being created or updated is a prerelease.
+        type: boolean
+      prerelease-identifier:
+        required: false
+        description: A string indicating an identifier (alpha, beta, rc, etc), to increment the prerelease version. number
+        type: string
+      disable-releaser:
+        required: false
+        description: A boolean indicating whether the releaser mode is disabled.
+        default: false
+        type: boolean
+      latest:
+        required: false
+        description: A string indicating whether the release being created or updated should be marked as latest.
+        type: string
+      commitish:
+        required: false
+        description: A string specifying the target branch for the release being created.
+        type: string
+      header:
+        required: false
+        description: A string that would be added before the template body.
+        type: string
+      footer:
+        required: false
+        description: A string that would be added after the template body.
         type: string
     secrets:
       repoAccessToken:
@@ -40,11 +64,20 @@ jobs:
   release:
     runs-on: ${{ inputs.runner }}
     steps:
-      - name: Create Github release
-        uses: darioblanco/release-wizard@v2.0.4
+      - name: Create/Update Release Draft
+        uses: release-drafter/release-drafter@v6
         with:
-          draft: ${{ inputs.draft }}
+          config-name: "release-drafter.yml"
+          name: ${{ inputs.name }}
+          tag: ${{ inputs.tag }}
+          version: ${{ inputs.version }}
+          publish: ${{ inputs.publish }}
           prerelease: ${{ inputs.prerelease }}
-          taskPrefix: ${{ inputs.taskPrefix }}
-          token: ${{ secrets.repoAccessToken }}
-          templatePath: ${{ inputs.templatePath }}
+          prerelease-identifier: ${{ inputs.prerelease-identifier }}
+          disable-releaser: ${{ inputs.disable-releaser }}
+          latest: ${{ inputs.latest }}
+          commitish: ${{ inputs.commitish }}
+          header: ${{ inputs.header }}
+          footer: ${{ inputs.footer }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.repoAccessToken }}
