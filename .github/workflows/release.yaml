@@ -52,7 +52,7 @@ on:
         description: A string that would be added after the template body.
         type: string
     secrets:
-      REPO_ACCESS_TOKEN:
+      repoAccessToken:
         required: true
         description: The Github token to perform operations cross-repo (not secrets.GITHUB_TOKEN!)
 jobs:
@@ -74,4 +74,4 @@ jobs:
           header: ${{ inputs.header }}
           footer: ${{ inputs.footer }}
         env:
-          GITHUB_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.repoAccessToken }}
