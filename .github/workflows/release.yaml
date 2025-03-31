@@ -68,11 +68,7 @@ jobs:
 
       - id: check_drafter
         run: |
-          if [ -f .github/release-drafter.yml ]; then
-            echo "file_exists=true" >> $GITHUB_ENV
-          else
-            echo "file_exists=false" >> $GITHUB_ENV
-          fi
+          echo "FILE_EXISTS=$(test -f .github/release-drafter.yml && echo 'true' || echo 'false')" >> "$GITHUB_ENV"
 
       - name: Create Release Drafter config if it does not exist
         if: env.file_exists == 'false'
