@@ -64,49 +64,6 @@ jobs:
   release:
     runs-on: ${{ inputs.runner }}
     steps:
-      - uses: actions/checkout@v3
-
-      - id: check_drafter
-        run: |
-          if [ -f .github/release-drafter.yml ]; then
-            echo 'file_exists=true' >> "$GITHUB_ENV"
-          else
-            echo 'file_exists=false' >> "$GITHUB_ENV"
-          fi
-
-      - name: Create Release Drafter config if it does not exist
-        if: env.file_exists == 'false'
-        run: |
-          mkdir -p .github
-          cat > .github/release-drafter.yml <<'EOF'
-          template: |
-            $CHANGES
-          categories:
-            - title: "🚀 Features"
-              labels:
-                - enhancement
-            - title: "🐛 Bug Fixes"
-              labels:
-                - bug
-            - title: "🧹 Chores"
-              labels:
-                - chore
-          tag-template: "v$NEXT_PATCH_VERSION"
-          name-template: "Release v$NEXT_PATCH_VERSION"
-          change-template: "- $TITLE (#$NUMBER) @$AUTHOR"
-          no-changes-template: "* No changes"
-          autolabeler:
-            - label: enhancement
-              title:
-                - "/^feat/"
-            - label: bug
-              title:
-                - "/^fix/"
-            - label: chore
-              title:
-                - "/^chore/"
-          EOF
-
       - name: Create/Update Release Draft
         uses: release-drafter/release-drafter@v6
         with:
