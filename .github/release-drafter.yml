@@ -1,0 +1,26 @@
+template: |
+  $CHANGES
+categories:
+  - title: "🚀 Features"
+    labels:
+      - enhancement
+  - title: "🐛 Bug Fixes"
+    labels:
+      - bug
+  - title: "🧹 Chores"
+    labels:
+      - chore
+tag-template: "v$NEXT_PATCH_VERSION"
+name-template: "Release v$NEXT_PATCH_VERSION"
+change-template: "- $TITLE (#$NUMBER) @$AUTHOR"
+no-changes-template: "* No changes"
+autolabeler:
+  - label: enhancement
+    title:
+      - "/^feat/"
+  - label: bug
+    title:
+      - "/^fix/"
+  - label: chore
+    title:
+      - "/^chore/"
