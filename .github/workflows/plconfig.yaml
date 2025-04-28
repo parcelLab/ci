@@ -49,67 +49,6 @@ jobs:
         uses: mikefarah/yq@v4.30.8
         with:
           cmd: yq ".schemaVersion" ${{ inputs.configurationFilepath }}
-  plconfig_legacy:
-    if: needs.read_schema_version.outputs.version != 'v2'
-    runs-on: ${{ inputs.runner }}
-    needs: [read_schema_version]
-    steps:
-      - name: Checkout current git repository
-        uses: actions/checkout@v3
-      - name: Load name
-        id: name
-        uses: mikefarah/yq@v4.30.8
-        with:
-          cmd: yq ".deployment.name" ${{ inputs.configurationFilepath }}
-      - name: Load namespace
-        id: namespace
-        uses: mikefarah/yq@v4.30.8
-        with:
-          cmd: yq ".deployment.namespace" ${{ inputs.configurationFilepath }}
-      - name: Load chart
-        id: chart
-        uses: mikefarah/yq@v4.30.8
-        with:
-          cmd: yq ".deployment.chart" ${{ inputs.configurationFilepath }}
-      - name: Checkout ${{ inputs.deploymentRepoURL }} git repository
-        uses: actions/checkout@v3
-        with:
-          repository: ${{ inputs.deploymentRepoURL }}
-          path: remote
-          token: ${{ secrets.repoAccessToken }}
-          ref: main
-      - name: Load vars
-        id: vars
-        run: |
-          # shellcheck disable=SC2086
-          echo "namespace-path=remote/${{ inputs.deploymentRepoPath }}/${{ steps.namespace.outputs.result }}" >> $GITHUB_OUTPUT
-          # shellcheck disable=SC2086
-          echo "do-not-edit=DO NOT EDIT. Auto generated from ${{ steps.name.outputs.result }} ${{ inputs.configurationFilepath }} (replaces values.yaml instead)" >> $GITHUB_OUTPUT
-      # Load plconfig values scoping to a subchart
-      - name: Load external values for all environments
-        uses: mikefarah/yq@v4.30.8
-        with:
-          cmd: >-
-            $(yq '.deployment.values | has("dev")' ${{ inputs.configurationFilepath }}) == 'true' && yq '{ "${{ steps.chart.outputs.result }}": .deployment.values.dev } | . head_comment="${{ steps.vars.outputs.do-not-edit }}"' ${{ inputs.configurationFilepath }} > ${{ steps.vars.outputs.namespace-path }}/dev/${{ steps.name.outputs.result }}/values-external.yaml ||
-            $(yq '.deployment.values | has("prod")' ${{ inputs.configurationFilepath }}) == 'true' && yq '{ "${{ steps.chart.outputs.result }}": .deployment.values.prod } | . head_comment="${{ steps.vars.outputs.do-not-edit }}"' ${{ inputs.configurationFilepath }} > ${{ steps.vars.outputs.namespace-path }}/prod/${{ steps.name.outputs.result }}/values-external.yaml ||
-            $(yq '.deployment.values | has("staging")' ${{ inputs.configurationFilepath }}) == 'true' && yq '{ "${{ steps.chart.outputs.result }}": .deployment.values.staging } | . head_comment="${{ steps.vars.outputs.do-not-edit }}"' ${{ inputs.configurationFilepath }} > ${{ steps.vars.outputs.namespace-path }}/staging/${{ steps.name.outputs.result }}/values-external.yaml ||
-            $(yq '.deployment.values | has("test")' ${{ inputs.configurationFilepath }}) == 'true' && yq '{ "${{ steps.chart.outputs.result }}": .deployment.values.test } | . head_comment="${{ steps.vars.outputs.do-not-edit }}"' ${{ inputs.configurationFilepath }} > ${{ steps.vars.outputs.namespace-path }}/test/${{ steps.name.outputs.result }}/values-external.yaml || true
-      # Commit & Push
-      - name: Commit deployment files
-        run: |
-          cd remote
-          git config --global user.email "${{ inputs.botEmail }}"
-          git config --global user.name "${{ inputs.botName }}"
-          git add .
-          git commit --allow-empty -m "chore(${{ steps.name.outputs.result }}): set parcelLab config values"
-      - name: Push changes to main in ${{ inputs.deploymentRepoURL }} git repository
-        uses: ad-m/github-push-action@0fafdd62b84042d49ec0cb92d9cac7f7ce4ec79e
-        with:
-          repository: ${{ inputs.deploymentRepoURL }}
-          directory: remote
-          github_token: ${{ secrets.repoAccessToken }}
-          branch: main
-          force: true
   detect_declarations:
     if: needs.read_schema_version.outputs.version == 'v2'
     runs-on: ${{ inputs.runner }}
