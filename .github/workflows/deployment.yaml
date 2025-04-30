@@ -188,7 +188,7 @@ jobs:
               "author": ${{ toJSON(inputs.author) }},
               "description": ${{ toJSON(inputs.description) }},
               "env": ${{ toJSON(inputs.env) }},
-              "name": ${{ inputs.appName) }},
+              "name": ${{ inputs.appName }},
               "container": {
                 "context": ${{ inputs.containerContext }},
                 "file": ${{ Containerfile }}
