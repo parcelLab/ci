@@ -157,7 +157,7 @@ jobs:
           token: ${{ secrets.repoAccessToken }}
   kubernetes-migrated-chart:
     runs-on: ${{ inputs.runner }}
-    if: needs.detect_declarations.outputs.has-kubernetes == 'true' && inputs.chartInAppRepo == true
+    if: inputs.chartInAppRepo == true
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v3
@@ -184,7 +184,7 @@ jobs:
           echo "url=$URL" >> $GITHUB_OUTPUT
           # shellcheck disable=SC2086
           echo "status-url=$STATUS_URL" >> $GITHUB_OUTPUT
-      - name: Create Github ${{ fromJSON(steps.values.outputs.result).name }} k8s deployment
+      - name: Create Github deployment
         uses: chrnorm/deployment-action@v2
         with:
           auto-merge: false
