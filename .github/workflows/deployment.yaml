@@ -164,14 +164,6 @@ jobs:
       - name: Load k8s deployment variables
         id: k8s
         run: |
-          # shellcheck disable=SC2129,SC2086
-          echo "namespace=${{ inputs.namespace }}" >> $GITHUB_OUTPUT
-          # shellcheck disable=SC2086
-          echo "version-key=${{ inputs.versionKey }}" >> $GITHUB_OUTPUT
-          # shellcheck disable=SC2086
-          echo "container-context=${{ inputs.containerContext }}" >> $GITHUB_OUTPUT
-          # shellcheck disable=SC2086
-          echo "container-file=${{ inputs.Containerfile }}" >> $GITHUB_OUTPUT
           if [[ "${{ inputs.env }}" == 'prod' ]]
           then
             URL="https://${{ inputs.appName }}.parcellab.dev"
@@ -196,14 +188,14 @@ jobs:
               "author": ${{ toJSON(inputs.author) }},
               "description": ${{ toJSON(inputs.description) }},
               "env": ${{ toJSON(inputs.env) }},
-              "name": ${{ toJSON(fromJSON(steps.values.outputs.result).name) }},
+              "name": ${{ inputs.appName) }},
               "container": {
-                "context": ${{ toJSON(steps.k8s.outputs.container-context) }},
-                "file": ${{ toJSON(steps.k8s.outputs.container-file) }}
+                "context": ${{ inputs.containerContext }},
+                "file": ${{ Containerfile }}
               },
               "kubernetes": {
-                "namespace": ${{ toJSON(steps.k8s.outputs.namespace) }},
-                "versionKey": ${{ toJSON(steps.k8s.outputs.version-key) }}
+                "namespace": ${{ inputs.namespace }},
+                "versionKey": ${{ inputs.versionKey }}
               },
               "schemaVersion": "v2",
               "statusUrl": ${{ toJSON(steps.k8s.outputs.status-url) }},
