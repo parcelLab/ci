@@ -2,14 +2,30 @@ name: Reusable Deployment
 on:
   workflow_call:
     inputs:
+      appName:
+        required: false
+        type: string
       author:
         required: true
         description: The author of the change that triggers the deployment
         type: string
+      chartInAppRepo:
+        required: false
+        description: Specify if chart is migrated into the application's repository
+        default: false
+        type: boolean
       configurationFilepath:
         required: false
         description: The path to the application configuration file
         default: ./plconfig.yaml
+        type: string
+      containerContext:
+        required: false
+        default: .
+        type: string
+      containerFile:
+        required: false
+        default: Containerfile
         type: string
       description:
         required: true
@@ -18,6 +34,10 @@ on:
       env:
         required: true
         description: The application environment. Can be test, staging or prod.
+        type: string
+      namespace:
+        required: false
+        description: EKS namespace
         type: string
       ref:
         required: false
@@ -37,6 +57,9 @@ on:
         required: false
         description: The url where the application is served
         type: string
+      versionKey:
+        required: false
+        type: string
     secrets:
       repoAccessToken:
         required: true
@@ -44,6 +67,7 @@ on:
 jobs:
   read_schema_version:
     runs-on: ${{ inputs.runner }}
+    if: inputs.chartInAppRepo == false
     outputs:
       version: ${{ steps.version.outputs.result }}
     steps:
@@ -57,7 +81,7 @@ jobs:
   detect_declarations:
     runs-on: ${{ inputs.runner }}
     needs: [read_schema_version]
-    if: needs.read_schema_version.outputs.version == 'v2'
+    if: needs.read_schema_version.outputs.version == 'v2' && inputs.chartInAppRepo == false
     outputs:
       has-kubernetes: ${{ steps.has-kubernetes.outputs.result }}
     steps:
@@ -76,11 +100,13 @@ jobs:
       - name: Checkout current git repository
         uses: actions/checkout@v3
       - name: Load plconfig values
+        if: inputs.chartInAppRepo == false
         id: values
         uses: mikefarah/yq@v4.30.8
         with:
           cmd: yq "." ${{ inputs.configurationFilepath }} -o=json -I=0
       - name: Load k8s deployment variables
+        if: inputs.chartInAppRepo == false
         id: k8s
         run: |
           # shellcheck disable=SC2129,SC2086
@@ -107,7 +133,32 @@ jobs:
           echo "url=$URL" >> $GITHUB_OUTPUT
           # shellcheck disable=SC2086
           echo "status-url=$STATUS_URL" >> $GITHUB_OUTPUT
+      - name: Load k8s deployment variables
+        if: inputs.chartInAppRepo == true
+        id: k8s
+        run: |
+          # shellcheck disable=SC2129,SC2086
+          echo "namespace=${{ inputs.namespace }}" >> $GITHUB_OUTPUT
+          # shellcheck disable=SC2086
+          echo "version-key=${{ inputs.versionKey }}" >> $GITHUB_OUTPUT
+          # shellcheck disable=SC2086
+          echo "container-context=${{ inputs.containerContext }}" >> $GITHUB_OUTPUT
+          # shellcheck disable=SC2086
+          echo "container-file=${{ inputs.Containerfile }}" >> $GITHUB_OUTPUT
+          if [[ "${{ inputs.env }}" == 'prod' ]]
+          then
+            URL="https://${{ inputs.appName }}.parcellab.dev"
+            STATUS_URL="https://argocd.${{ inputs.env }}.parcellab.dev/applications/${{ inputs.appName }}"
+          else
+            URL="https://${{ inputs.appName }}.${{ inputs.env }}.parcellab.dev"
+            STATUS_URL="https://argocd.${{ inputs.env }}.parcellab.dev/applications/${{ inputs.appName }}"            STATUS_URL="${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.env.prod.metadata.statusUrl }}"
+          fi
+          # shellcheck disable=SC2086
+          echo "url=$URL" >> $GITHUB_OUTPUT
+          # shellcheck disable=SC2086
+          echo "status-url=$STATUS_URL" >> $GITHUB_OUTPUT
       - name: Create Github ${{ fromJSON(steps.values.outputs.result).name }} k8s deployment
+        if: inputs.chartInAppRepo == false
         uses: chrnorm/deployment-action@v2
         with:
           auto-merge: false
