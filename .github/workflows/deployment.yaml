@@ -151,7 +151,7 @@ jobs:
             STATUS_URL="https://argocd.${{ inputs.env }}.parcellab.dev/applications/${{ inputs.appName }}"
           else
             URL="https://${{ inputs.appName }}.${{ inputs.env }}.parcellab.dev"
-            STATUS_URL="https://argocd.${{ inputs.env }}.parcellab.dev/applications/${{ inputs.appName }}"            STATUS_URL="${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.env.prod.metadata.statusUrl }}"
+            STATUS_URL="https://argocd.${{ inputs.env }}.parcellab.dev/applications/${{ inputs.appName }}"
           fi
           # shellcheck disable=SC2086
           echo "url=$URL" >> $GITHUB_OUTPUT
