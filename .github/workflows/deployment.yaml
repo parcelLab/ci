@@ -109,42 +109,27 @@ jobs:
         if: inputs.chartInAppRepo == false
         id: k8s
         run: |
-          # shellcheck disable=SC2129,SC2086
-          echo "namespace=${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.namespace }}" >> $GITHUB_OUTPUT
-          # shellcheck disable=SC2086
-          echo "version-key=${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.versionKey }}" >> $GITHUB_OUTPUT
-          # shellcheck disable=SC2086
-          echo "container-context=${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.container.context || '.' }}" >> $GITHUB_OUTPUT
-          # shellcheck disable=SC2086
-          echo "container-file=${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.container.file || 'Containerfile' }}" >> $GITHUB_OUTPUT
-          if [[ "${{ inputs.env }}" == 'prod' ]]
+          if [[ ${{ "inputs.chartInAppRepo" }} == 'false'
           then
-            URL="${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.env.prod.metadata.url }}"
-            STATUS_URL="${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.env.prod.metadata.statusUrl }}"
-          elif [[ "${{ inputs.env }}" == 'staging' ]]
-          then
-            URL="${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.env.staging.metadata.url }}"
-            STATUS_URL="${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.env.staging.metadata.statusUrl }}"
+            # shellcheck disable=SC2129,SC2086
+            echo "namespace=${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.namespace }}" >> $GITHUB_OUTPUT
+            # shellcheck disable=SC2086
+            echo "version-key=${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.versionKey }}" >> $GITHUB_OUTPUT
+            # shellcheck disable=SC2086
+            echo "container-context=${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.container.context || '.' }}" >> $GITHUB_OUTPUT
+            # shellcheck disable=SC2086
+            echo "container-file=${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.container.file || 'Containerfile' }}" >> $GITHUB_OUTPUT
           else
-            URL="${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.env.test.metadata.url }}"
-            STATUS_URL="${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.env.prod.metadata.statusUrl }}"
+            # shellcheck disable=SC2129,SC2086
+            echo "namespace=${{ inputs.namespace }}" >> $GITHUB_OUTPUT
+            # shellcheck disable=SC2086
+            echo "version-key=${{ inputs.versionKey }}" >> $GITHUB_OUTPUT
+            # shellcheck disable=SC2086
+            echo "container-context=${{ inputs.containerContext }}" >> $GITHUB_OUTPUT
+            # shellcheck disable=SC2086
+            echo "container-file=${{ inputs.Containerfile }}" >> $GITHUB_OUTPUT
           fi
-          # shellcheck disable=SC2086
-          echo "url=$URL" >> $GITHUB_OUTPUT
-          # shellcheck disable=SC2086
-          echo "status-url=$STATUS_URL" >> $GITHUB_OUTPUT
-      - name: Load k8s deployment variables
-        if: inputs.chartInAppRepo == true
-        id: k8s
-        run: |
-          # shellcheck disable=SC2129,SC2086
-          echo "namespace=${{ inputs.namespace }}" >> $GITHUB_OUTPUT
-          # shellcheck disable=SC2086
-          echo "version-key=${{ inputs.versionKey }}" >> $GITHUB_OUTPUT
-          # shellcheck disable=SC2086
-          echo "container-context=${{ inputs.containerContext }}" >> $GITHUB_OUTPUT
-          # shellcheck disable=SC2086
-          echo "container-file=${{ inputs.Containerfile }}" >> $GITHUB_OUTPUT
+          
           if [[ "${{ inputs.env }}" == 'prod' ]]
           then
             URL="https://${{ inputs.appName }}.parcellab.dev"
