@@ -81,7 +81,7 @@ jobs:
   detect_declarations:
     runs-on: ${{ inputs.runner }}
     needs: [read_schema_version]
-    if: needs.read_schema_version.outputs.version == 'v2' && inputs.chartInAppRepo == false
+    if: needs.read_schema_version.outputs.version == 'v2'
     outputs:
       has-kubernetes: ${{ steps.has-kubernetes.outputs.result }}
     steps:
@@ -100,36 +100,21 @@ jobs:
       - name: Checkout current git repository
         uses: actions/checkout@v3
       - name: Load plconfig values
-        if: inputs.chartInAppRepo == false
         id: values
         uses: mikefarah/yq@v4.30.8
         with:
           cmd: yq "." ${{ inputs.configurationFilepath }} -o=json -I=0
       - name: Load k8s deployment variables
-        if: inputs.chartInAppRepo == false
         id: k8s
         run: |
-          if [[ "${{ inputs.chartInAppRepo }}" == 'false' ]]
-          then
-            # shellcheck disable=SC2129,SC2086
-            echo "namespace=${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.namespace }}" >> $GITHUB_OUTPUT
-            # shellcheck disable=SC2086
-            echo "version-key=${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.versionKey }}" >> $GITHUB_OUTPUT
-            # shellcheck disable=SC2086
-            echo "container-context=${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.container.context || '.' }}" >> $GITHUB_OUTPUT
-            # shellcheck disable=SC2086
-            echo "container-file=${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.container.file || 'Containerfile' }}" >> $GITHUB_OUTPUT
-          else
-            # shellcheck disable=SC2129,SC2086
-            echo "namespace=${{ inputs.namespace }}" >> $GITHUB_OUTPUT
-            # shellcheck disable=SC2086
-            echo "version-key=${{ inputs.versionKey }}" >> $GITHUB_OUTPUT
-            # shellcheck disable=SC2086
-            echo "container-context=${{ inputs.containerContext }}" >> $GITHUB_OUTPUT
-            # shellcheck disable=SC2086
-            echo "container-file=${{ inputs.Containerfile }}" >> $GITHUB_OUTPUT
-          fi
-
+          # shellcheck disable=SC2129,SC2086
+          echo "namespace=${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.namespace }}" >> $GITHUB_OUTPUT
+          # shellcheck disable=SC2086
+          echo "version-key=${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.versionKey }}" >> $GITHUB_OUTPUT
+          # shellcheck disable=SC2086
+          echo "container-context=${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.container.context || '.' }}" >> $GITHUB_OUTPUT
+          # shellcheck disable=SC2086
+          echo "container-file=${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.container.file || 'Containerfile' }}" >> $GITHUB_OUTPUT
           if [[ "${{ inputs.env }}" == 'prod' ]]
           then
             URL="https://${{ inputs.appName }}.parcellab.dev"
@@ -143,7 +128,6 @@ jobs:
           # shellcheck disable=SC2086
           echo "status-url=$STATUS_URL" >> $GITHUB_OUTPUT
       - name: Create Github ${{ fromJSON(steps.values.outputs.result).name }} k8s deployment
-        if: inputs.chartInAppRepo == false
         uses: chrnorm/deployment-action@v2
         with:
           auto-merge: false
@@ -163,6 +147,55 @@ jobs:
               "kubernetes": {
                 "namespace": ${{ toJSON(steps.k8s.outputs.namespace) }},
                 "versionKey": ${{ toJSON(steps.k8s.outputs.version-key) }}
+              },
+              "schemaVersion": "v2",
+              "statusUrl": ${{ toJSON(steps.k8s.outputs.status-url) }},
+              "url": ${{ toJSON(steps.k8s.outputs.url) }}
+            }
+          production-environment: "${{ inputs.env == 'prod' }}"
+          transient-environment: "${{ inputs.env == 'test' }}"
+          token: ${{ secrets.repoAccessToken }}
+  kubernetes-migrated-chart:
+    runs-on: ${{ inputs.runner }}
+    if: inputs.chartInAppRepo == true
+    steps:
+      - name: Checkout current git repository
+        uses: actions/checkout@v3
+      - name: Load k8s deployment variables
+        id: k8s
+        run: |
+          if [[ "${{ inputs.env }}" == 'prod' ]]
+          then
+            URL="https://${{ inputs.appName }}.parcellab.dev"
+            STATUS_URL="https://argocd.${{ inputs.env }}.parcellab.dev/applications/${{ inputs.appName }}"
+          else
+            URL="https://${{ inputs.appName }}.${{ inputs.env }}.parcellab.dev"
+            STATUS_URL="https://argocd.${{ inputs.env }}.parcellab.dev/applications/${{ inputs.appName }}"
+          fi
+          # shellcheck disable=SC2086
+          echo "url=$URL" >> $GITHUB_OUTPUT
+          # shellcheck disable=SC2086
+          echo "status-url=$STATUS_URL" >> $GITHUB_OUTPUT
+      - name: Create Github deployment
+        uses: chrnorm/deployment-action@v2
+        with:
+          auto-merge: false
+          environment: ${{ inputs.env }}
+          ref: ${{ inputs.ref }}
+          required-contexts: ""
+          payload: |
+            {
+              "author": ${{ toJSON(inputs.author) }},
+              "description": ${{ toJSON(inputs.description) }},
+              "env": ${{ toJSON(inputs.env) }},
+              "name": "${{ inputs.appName }}",
+              "container": {
+                "context": "${{ inputs.containerContext }}",
+                "file": "${{ inputs.Containerfile }}"
+              },
+              "kubernetes": {
+                "namespace": "${{ inputs.namespace }}",
+                "versionKey": "${{ inputs.versionKey }}"
               },
               "schemaVersion": "v2",
               "statusUrl": ${{ toJSON(steps.k8s.outputs.status-url) }},
