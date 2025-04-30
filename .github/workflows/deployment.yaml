@@ -129,7 +129,7 @@ jobs:
             # shellcheck disable=SC2086
             echo "container-file=${{ inputs.Containerfile }}" >> $GITHUB_OUTPUT
           fi
-          
+
           if [[ "${{ inputs.env }}" == 'prod' ]]
           then
             URL="https://${{ inputs.appName }}.parcellab.dev"
