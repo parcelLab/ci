@@ -188,14 +188,14 @@ jobs:
               "author": ${{ toJSON(inputs.author) }},
               "description": ${{ toJSON(inputs.description) }},
               "env": ${{ toJSON(inputs.env) }},
-              "name": ${{ inputs.appName }},
+              "name": "${{ inputs.appName }}",
               "container": {
-                "context": ${{ inputs.containerContext }},
-                "file": ${{ inputs.Containerfile }}
+                "context": "${{ inputs.containerContext }}",
+                "file": "${{ inputs.Containerfile }}"
               },
               "kubernetes": {
-                "namespace": ${{ inputs.namespace }},
-                "versionKey": ${{ inputs.versionKey }}
+                "namespace": "${{ inputs.namespace }}",
+                "versionKey": "${{ inputs.versionKey }}"
               },
               "schemaVersion": "v2",
               "statusUrl": ${{ toJSON(steps.k8s.outputs.status-url) }},
