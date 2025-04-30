@@ -191,7 +191,7 @@ jobs:
               "name": ${{ inputs.appName }},
               "container": {
                 "context": ${{ inputs.containerContext }},
-                "file": ${{ Containerfile }}
+                "file": ${{ inputs.Containerfile }}
               },
               "kubernetes": {
                 "namespace": ${{ inputs.namespace }},
