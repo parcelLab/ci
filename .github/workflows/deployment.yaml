@@ -109,7 +109,7 @@ jobs:
         if: inputs.chartInAppRepo == false
         id: k8s
         run: |
-          if [[ ${{ "inputs.chartInAppRepo" }} == 'false' ]]
+          if [[ "${{ inputs.chartInAppRepo }}" == 'false' ]]
           then
             # shellcheck disable=SC2129,SC2086
             echo "namespace=${{ fromJSON(steps.values.outputs.result).deployment.kubernetes.namespace }}" >> $GITHUB_OUTPUT
