@@ -244,7 +244,6 @@ jobs:
           directory: remote
           github_token: ${{ secrets.repoAccessToken }}
           branch: main
-          force: true
       - if: success()
         name: Successful ${{ github.event.deployment.payload.name }} deployment
         uses: chrnorm/deployment-status@v2
