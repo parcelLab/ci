@@ -27,6 +27,11 @@ on:
         description: The path within the deployment repository that holds all version files
         default: namespaces
         type: string
+      deploymentRepoValuesPath:
+        required: false
+        description: The path within the deployment repository that holds all values files
+        default: ""
+        type: string
       deploymentRepoURL:
         required: false
         description: The repository within Github that holds the version file to deploy via GitOps
@@ -215,11 +220,19 @@ jobs:
         uses: mikefarah/yq@v4.30.8
         with:
           cmd: yq '(.${{ github.event.deployment.payload.kubernetes.versionKey }} = "${{ needs.initialize.outputs.version }}")' -i remote/${{ inputs.deploymentRepoPath }}/${{ github.event.deployment.payload.kubernetes.namespace }}/${{ github.event.deployment.payload.env }}/${{ github.event.deployment.payload.name }}/${{ inputs.versionFilePath }}
-      - if: github.event.deployment.payload.schemaVersion == 'v2' && github.event.deployment.payload.env != 'playground' && inputs.chartInAppRepo == true
+
+      - if: github.event.deployment.payload.schemaVersion == 'v2' && github.event.deployment.payload.env != 'playground' && inputs.chartInAppRepo == true && inputs.deploymentRepoValuesPath == ''
         name: Deploy ${{ github.sha }} to  ${{ github.event.deployment.environment }} values
         uses: mikefarah/yq@v4.30.8
         with:
           cmd: yq '(.${{ github.event.deployment.payload.kubernetes.versionKey }} = "${{ needs.initialize.outputs.version }}")' -i remote/${{ inputs.deploymentRepoPath }}/values.${{ github.event.deployment.payload.env }}.yaml
+
+      - if: github.event.deployment.payload.schemaVersion == 'v2' && github.event.deployment.payload.env != 'playground' && inputs.chartInAppRepo == true && inputs.deploymentRepoValuesPath != ''
+        name: Deploy ${{ github.sha }} to  ${{ github.event.deployment.environment }} values
+        uses: mikefarah/yq@v4.30.8
+        with:
+          cmd: yq '(.${{ github.event.deployment.payload.kubernetes.versionKey }} = "${{ needs.initialize.outputs.version }}")' -i remote/${{ inputs.deploymentRepoValuesPath }}
+
       - if: github.event.deployment.payload.schemaVersion == 'v2' && github.event.deployment.payload.env == 'playground' && inputs.chartInAppRepo == false
         name: Update ${{ github.event.deployment.payload.name }} version for ${{ github.event.deployment.environment }} values
         uses: mikefarah/yq@v4.30.8
