@@ -207,7 +207,6 @@ jobs:
     needs: [initialize, build]
     environment: ${{ github.event.deployment.payload.env }}
     concurrency: commit-${{ inputs.deploymentRepoURL }}-${{ github.sha }}
-    cancel-in-progress: false
     runs-on: ${{ inputs.runner }}
     steps:
       - name: Checkout ${{ inputs.deploymentRepoURL }} git repository
