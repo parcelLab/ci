@@ -1,4 +1,4 @@
-In this repository we manage our reusable pipelines to deploy services to kubernetes.
+In this repository we manage our reusable pipelines to deploy services to Kubernetes.
 
 The relevant folder is .github/workflows which contains several pipelines to be used to support build processes and deployments.
 
