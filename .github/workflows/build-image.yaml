@@ -37,6 +37,10 @@ on:
         description: The username for the container registry
         default: parcellab-dev-bot
         type: string
+      repository_kind:
+        required: false
+        description: Using as a dummy, to be removed in the future versions
+        type: string
       enableContainerScan:
         required: false
         description: Apply the container scan
