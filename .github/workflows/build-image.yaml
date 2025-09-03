@@ -37,11 +37,6 @@ on:
         description: The username for the container registry
         default: parcellab-dev-bot
         type: string
-      repository_kind:
-        required: false
-        description: The kind of repository (github or ecr)
-        default: "github"
-        type: string
       enableContainerScan:
         required: false
         description: Apply the container scan
@@ -63,70 +58,8 @@ env:
   IMAGE_SCAN_TRIVY_TIMEOUT: 10m
 
 jobs:
-  build-github-single:
-    if: inputs.repository_kind == 'github' && inputs.imageTargets == ''
-    environment: ${{ github.event.deployment.payload.env }}
-    runs-on: ${{ inputs.runner }}
-    steps:
-      - name: Checkout current git repository
-        uses: actions/checkout@v4
-      - if: inputs.preScript != ''
-        name: Run script before the docker image is built
-        run: |
-          echo "Run '${{ inputs.preScript }}'"
-          ${{ inputs.preScript }}
-        env:
-          NPM_GITHUB_TOKEN: ${{ secrets.npmGithubReadToken }}
-      - if: inputs.artifactPath != '' && inputs.artifactName != ''
-        name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ inputs.artifactName }}
-          path: ${{ inputs.artifactPath }}
-      - name: Login to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ inputs.registryHostname }}
-          username: ${{ inputs.registryUsername }}
-          password: ${{ secrets.repoAccessToken }}
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      - name: Build image
-        uses: docker/build-push-action@v6
-        with:
-          build-args: |
-            GITHUB_SHA=${{ github.sha }}
-            VERSION=${{ inputs.version }}
-            APP_NAME=${{ github.event.deployment.payload.name }}
-            ENVIRONMENT=${{ github.event.deployment.payload.env }}
-            NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
-          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
-          cache-to: type=inline
-          context: ${{ github.event.deployment.payload.container.context }}
-          load: true
-          file: ${{ github.event.deployment.payload.container.file }}
-          platforms: linux/amd64
-          tags: |
-            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:latest
-            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:${{ inputs.version }}
-            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:${{ github.sha }}
-      - name: Scan for vulnerabilities
-        if: inputs.enableContainerScan
-        uses: crazy-max/ghaction-container-scan@v3
-        with:
-          image: ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}:latest
-          dockerfile: Containerfile
-          severity: ${{ env.IMAGE_SCAN_SEVERITY }}
-          severity_threshold: ${{ env.IMAGE_SCAN_SEVERITY_THRESHOLD }}
-          annotations: ${{ env.IMAGE_SCAN_ANNOTATIONS }}
-        env:
-          TRIVY_TIMEOUT: ${{ env.IMAGE_SCAN_TRIVY_TIMEOUT }}
-      - name: Push image to GitHub
-        run: |
-          docker push -a ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
-
   build-ecr-single:
-    if: inputs.repository_kind == 'ecr' && inputs.imageTargets == ''
+    if: inputs.imageTargets == ''
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
     steps:
@@ -148,7 +81,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Configure AWS credentials
-        if: inputs.repository_kind == 'ecr'
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -194,78 +126,11 @@ jobs:
         env:
           TRIVY_TIMEOUT: ${{ env.IMAGE_SCAN_TRIVY_TIMEOUT }}
       - name: Push image to ECR
-        if: inputs.repository_kind == 'ecr'
         run: |
           docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}
 
-  build-github-matrix:
-    if: inputs.repository_kind == 'github' && inputs.imageTargets != ''
-    environment: ${{ github.event.deployment.payload.env }}
-    runs-on: ${{ inputs.runner }}
-    strategy:
-      matrix:
-        containerfile_targets: ${{ fromJson(inputs.imageTargets) }}
-    steps:
-      - name: Checkout current git repository
-        uses: actions/checkout@v4
-      - if: inputs.preScript != ''
-        name: Run script before the docker image is built
-        run: |
-          echo "Run '${{ inputs.preScript }}'"
-          ${{ inputs.preScript }}
-        env:
-          NPM_GITHUB_TOKEN: ${{ secrets.npmGithubReadToken }}
-      - if: inputs.artifactPath != '' && inputs.artifactName != ''
-        name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ inputs.artifactName }}
-          path: ${{ inputs.artifactPath }}
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      - name: Login to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ inputs.registryHostname }}
-          username: ${{ inputs.registryUsername }}
-          password: ${{ secrets.repoAccessToken }}
-      - name: Build ${{ matrix.containerfile_targets }} image
-        uses: docker/build-push-action@v6
-        with:
-          build-args: |
-            GITHUB_SHA=${{ github.sha }}
-            VERSION=${{ inputs.version }}
-            APP_NAME=${{ github.event.deployment.payload.name }}
-            ENVIRONMENT=${{ github.event.deployment.payload.env }}
-            NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
-          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}
-          cache-to: type=inline
-          context: ${{ github.event.deployment.payload.container.context }}
-          load: true
-          file: ${{ github.event.deployment.payload.container.file }}
-          platforms: linux/amd64
-          tags: |
-            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:latest
-            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:${{ inputs.version }}
-            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:${{ github.sha }}
-          target: ${{ matrix.containerfile_targets }}
-      - name: Scan for vulnerabilities
-        uses: crazy-max/ghaction-container-scan@v3
-        if: inputs.enableContainerScan
-        with:
-          image: ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:latest
-          dockerfile: Containerfile
-          severity: ${{ env.IMAGE_SCAN_SEVERITY }}
-          severity_threshold: ${{ env.IMAGE_SCAN_SEVERITY_THRESHOLD }}
-          annotations: ${{ env.IMAGE_SCAN_ANNOTATIONS }}
-        env:
-          TRIVY_TIMEOUT: ${{ env.IMAGE_SCAN_TRIVY_TIMEOUT }}
-      - name: Push ${{ matrix.containerfile_targets }} image to ECR
-        run: |
-          docker push -a ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}
-
   build-ecr-matrix:
-    if: inputs.repository_kind == 'ecr' && inputs.imageTargets != ''
+    if: inputs.imageTargets != ''
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
     strategy:
