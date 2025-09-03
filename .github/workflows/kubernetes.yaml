@@ -178,7 +178,7 @@ jobs:
 
   build:
     needs: [initialize]
-    uses: parcelLab/ci/.github/workflows/build-image.yaml@cleanup
+    uses: parcelLab/ci/.github/workflows/build-image.yaml@main
     with:
       artifactName: ${{ inputs.artifactName }}
       artifactPath: ${{ inputs.artifactPath }}
