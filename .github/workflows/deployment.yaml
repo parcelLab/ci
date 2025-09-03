@@ -57,7 +57,6 @@ on:
 jobs:
   kubernetes:
     runs-on: ${{ inputs.runner }}
-    if: inputs.chartInAppRepo == true
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v3
