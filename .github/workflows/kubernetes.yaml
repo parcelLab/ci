@@ -17,6 +17,10 @@ on:
         description: The email of the bot that will appear in the GitOps commit
         default: dev.bot@parcellab.com
         type: string
+      chartInAppRepo:
+        required: false
+        description: Using as a dummy, to be removed in the future versions
+        type: boolean
       deploymentRepoPath:
         required: false
         description: The path within the deployment repository that holds all version files
@@ -56,6 +60,10 @@ on:
         required: false
         description: The username for the container registry
         default: parcellab-dev-bot
+        type: string
+      repository_kind:
+        required: false
+        description: Using as a dummy, to be removed in the future versions
         type: string
       enableContainerScan:
         required: false
@@ -178,7 +186,7 @@ jobs:
 
   build:
     needs: [initialize]
-    uses: parcelLab/ci/.github/workflows/build-image.yaml@main
+    uses: parcelLab/ci/.github/workflows/build-image.yaml@v8.2.4
     with:
       artifactName: ${{ inputs.artifactName }}
       artifactPath: ${{ inputs.artifactPath }}
