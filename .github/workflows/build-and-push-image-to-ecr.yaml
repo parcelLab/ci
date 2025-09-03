@@ -25,11 +25,6 @@ on:
         description: If provided, downloads a previously uploaded artifact (has to be in the same workflow). Both artifactPath and artifactName have to be passed.
         default: ""
         type: string
-    secrets:
-      AWS_ACCESS_KEY_ID:
-        required: true
-      AWS_SECRET_ACCESS_KEY:
-        required: true
 
 jobs:
   build-and-push-image-to-ecr:
@@ -46,9 +41,9 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-central-1
+          role-to-assume:
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
       - name: Create ECR repository if it doesn't exist
         run: |
           aws ecr describe-repositories --repository-names ${{ inputs.APPLICATION_NAME }} || \
