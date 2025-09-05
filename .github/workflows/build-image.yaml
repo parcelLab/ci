@@ -64,6 +64,9 @@ env:
 jobs:
   build-ecr-single:
     if: inputs.imageTargets == ''
+    permissions:
+      id-token: write
+      contents: read
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
     steps:
@@ -134,6 +137,9 @@ jobs:
 
   build-ecr-matrix:
     if: inputs.imageTargets != ''
+    permissions:
+      id-token: write
+      contents: read
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
     strategy:
