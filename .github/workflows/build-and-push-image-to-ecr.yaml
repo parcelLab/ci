@@ -25,6 +25,10 @@ on:
         description: If provided, downloads a previously uploaded artifact (has to be in the same workflow). Both artifactPath and artifactName have to be passed.
         default: ""
         type: string
+    secrets:
+      AWS_ROLE_TO_ASSUME:
+        required: true
+        description: AWS OIDC role for GitHub to assume
 
 jobs:
   build-and-push-image-to-ecr:
