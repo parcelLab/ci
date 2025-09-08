@@ -64,6 +64,9 @@ env:
 jobs:
   build-ecr-single:
     if: inputs.imageTargets == ''
+    permissions:
+      id-token: write
+      contents: read
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
     steps:
@@ -87,9 +90,8 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-central-1
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
       - name: Create ECR repository if it doesn't exist
         run: |
           aws ecr describe-repositories --repository-names ${{ github.event.deployment.payload.name }} || \
@@ -135,6 +137,9 @@ jobs:
 
   build-ecr-matrix:
     if: inputs.imageTargets != ''
+    permissions:
+      id-token: write
+      contents: read
     environment: ${{ github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
     strategy:
@@ -161,9 +166,8 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-central-1
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
       - name: Create ${{ matrix.containerfile_targets }} ECR repository if it doesn't exist
         run: |
           aws ecr describe-repositories --repository-names ${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }} || \
