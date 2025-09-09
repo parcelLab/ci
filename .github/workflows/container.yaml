@@ -11,6 +11,11 @@ on:
         description: The container context to build the image
         default: .
         type: string
+      enableContainerScan:
+        required: false
+        description: Apply the container scan
+        default: true
+        type: boolean
       extraBuildArgs:
         required: false
         description: Extra build arguments for building the docker image (KEY=VALUE separated by new lines)
