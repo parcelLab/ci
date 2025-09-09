@@ -82,6 +82,10 @@ jobs:
           load: true
           file: ${{ inputs.filePath }}
           platforms: linux/amd64
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.registryOrg }}/${{ inputs.appName }}:latest
+            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.registryOrg }}/${{ inputs.appName }}:${{ inputs.version }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.registryOrg }}/${{ inputs.appName }}:${{ github.sha }}
       - name: Scan for vulnerabilities
         if: inputs.enableContainerScan
         uses: crazy-max/ghaction-container-scan@v3
