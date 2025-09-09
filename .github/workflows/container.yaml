@@ -39,9 +39,10 @@ on:
       npmGithubReadToken:
         required: false
         description: The Github token with permissions to read NPM private packages
-      registryPassword:
+      AWS_ROLE_TO_ASSUME:
         required: true
-        description: The password for the container registry
+        description: AWS OIDC role for GitHub to assume
+
 jobs:
   build-ecr-single:
     permissions:
