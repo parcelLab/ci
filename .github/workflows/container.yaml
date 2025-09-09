@@ -21,11 +21,6 @@ on:
         description: The file path for the Container image
         default: Containerfile
         type: string
-      registryOrg:
-        required: false
-        description: The registry organization
-        default: parcellab
-        type: string
       runner:
         required: false
         description: Runner type
