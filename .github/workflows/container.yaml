@@ -76,21 +76,21 @@ jobs:
             VERSION=${{ inputs.version }}
             NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
             ${{ inputs.extraBuildArgs }}
-          cache-from: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ inputs.registryOrg }}/${{ inputs.appName }}:cache
-          cache-to: mode=max,image-manifest=true,oci-mediatypes=true,type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ inputs.registryOrg }}/${{ inputs.appName }}:cache
+          cache-from: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ inputs.appName }}:cache
+          cache-to: mode=max,image-manifest=true,oci-mediatypes=true,type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ inputs.appName }}:cache
           context: ${{ inputs.contextPath }}
           load: true
           file: ${{ inputs.filePath }}
           platforms: linux/amd64
           tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.registryOrg }}/${{ inputs.appName }}:latest
-            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.registryOrg }}/${{ inputs.appName }}:${{ inputs.version }}
-            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.registryOrg }}/${{ inputs.appName }}:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.appName }}:latest
+            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.appName }}:${{ inputs.version }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.appName }}:${{ github.sha }}
       - name: Scan for vulnerabilities
         if: inputs.enableContainerScan
         uses: crazy-max/ghaction-container-scan@v3
         with:
-          image: ${{ steps.login-ecr.outputs.registry }}/${{ inputs.registryOrg }}/${{ inputs.appName }}:latest
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ inputs.appName }}:latest
           dockerfile: Containerfile
           severity: ${{ env.IMAGE_SCAN_SEVERITY }}
           severity_threshold: ${{ env.IMAGE_SCAN_SEVERITY_THRESHOLD }}
@@ -99,4 +99,4 @@ jobs:
           TRIVY_TIMEOUT: ${{ env.IMAGE_SCAN_TRIVY_TIMEOUT }}
       - name: Push image to ECR
         run: |
-          docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ inputs.registryOrg }}/${{ inputs.appName }}
+          docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ inputs.appName }}
