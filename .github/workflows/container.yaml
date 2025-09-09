@@ -61,10 +61,10 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
       - name: Create ECR repository if it doesn't exist
         run: |
-          aws ecr describe-repositories --repository-names ${{ inputs.registryOrg }}/${{ inputs.appName }} || \
-          aws ecr create-repository --repository-name ${{ inputs.registryOrg }}/${{ inputs.appName }}
+          aws ecr describe-repositories --repository-names ${{ inputs.appName }} || \
+          aws ecr create-repository --repository-name ${{ inputs.appName }}
           LIFECYCLE_POLICY='{"rules":[{"rulePriority":1,"description":"Keep last 500 images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":500},"action":{"type":"expire"}}]}'
-          aws ecr put-lifecycle-policy --repository-name ${{ inputs.registryOrg }}/${{ inputs.appName }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
+          aws ecr put-lifecycle-policy --repository-name ${{ inputs.appName }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
