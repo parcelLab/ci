@@ -42,16 +42,6 @@ on:
         description: If provided, runs a script after repo checkout and before the docker image is built. Useful in case that you need to build a package outside of the docker image (and load the artifacts via copy).
         default: ""
         type: string
-      registryHostname:
-        required: false
-        description: The hostname for the container registry
-        default: ghcr.io
-        type: string
-      registryOrg:
-        required: false
-        description: The registry organization
-        default: parcellab
-        type: string
       registryUsername:
         required: false
         description: The username for the container registry
@@ -178,8 +168,6 @@ jobs:
       artifactPath: ${{ inputs.artifactPath }}
       imageTargets: ${{ inputs.imageTargets }}
       preScript: ${{ inputs.preScript }}
-      registryHostname: ${{ inputs.registryHostname }}
-      registryOrg: ${{ inputs.registryOrg }}
       registryUsername: ${{ inputs.registryUsername }}
       enableContainerScan: ${{ inputs.enableContainerScan }}
       runner: ${{ inputs.runner }}

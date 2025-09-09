@@ -2,11 +2,20 @@ name: Reusable Container
 on:
   workflow_call:
     inputs:
+      appName:
+        required: true
+        description: The container image name
+        type: string
       contextPath:
         required: false
         description: The container context to build the image
         default: .
         type: string
+      enableContainerScan:
+        required: false
+        description: Apply the container scan
+        default: true
+        type: boolean
       extraBuildArgs:
         required: false
         description: Extra build arguments for building the docker image (KEY=VALUE separated by new lines)
@@ -16,25 +25,6 @@ on:
         required: false
         description: The file path for the Container image
         default: Containerfile
-        type: string
-      name:
-        required: true
-        description: The container image name
-        type: string
-      registryHostname:
-        required: false
-        description: The hostname for the container registry
-        default: ghcr.io
-        type: string
-      registryOrg:
-        required: false
-        description: The registry organization
-        default: parcellab
-        type: string
-      registryUsername:
-        required: false
-        description: The username for the container registry
-        default: parcellab-dev-bot
         type: string
       runner:
         required: false
@@ -49,38 +39,64 @@ on:
       npmGithubReadToken:
         required: false
         description: The Github token with permissions to read NPM private packages
-      registryPassword:
+      AWS_ROLE_TO_ASSUME:
         required: true
-        description: The password for the container registry
+        description: AWS OIDC role for GitHub to assume
+
 jobs:
-  container:
+  build-ecr-single:
+    permissions:
+      id-token: write
+      contents: read
     runs-on: ${{ inputs.runner }}
     steps:
       - name: Checkout current git repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-      - name: Login to Container Registry
-        uses: docker/login-action@v1
+        uses: docker/setup-buildx-action@v2
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
         with:
-          registry: ${{ inputs.registryHostname }}
-          username: ${{ inputs.registryUsername }}
-          password: ${{ secrets.registryPassword }}
-      - name: Build and push latest version
-        uses: docker/build-push-action@v4
+          aws-region: eu-central-1
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+      - name: Create ECR repository if it doesn't exist
+        run: |
+          aws ecr describe-repositories --repository-names ${{ inputs.appName }} || \
+          aws ecr create-repository --repository-name ${{ inputs.appName }}
+          LIFECYCLE_POLICY='{"rules":[{"rulePriority":1,"description":"Keep last 500 images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":500},"action":{"type":"expire"}}]}'
+          aws ecr put-lifecycle-policy --repository-name ${{ inputs.appName }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build image
+        uses: docker/build-push-action@v6
         with:
           build-args: |
             GITHUB_SHA=${{ github.sha }}
-            NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
             VERSION=${{ inputs.version }}
+            NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
             ${{ inputs.extraBuildArgs }}
-          cache-from: type=registry,ref=${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.name }}
-          cache-to: type=inline
+          cache-from: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ inputs.appName }}:cache
+          cache-to: mode=max,image-manifest=true,oci-mediatypes=true,type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ inputs.appName }}:cache
           context: ${{ inputs.contextPath }}
+          load: true
           file: ${{ inputs.filePath }}
           platforms: linux/amd64
-          push: true
           tags: |
-            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.name }}:latest
-            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.name }}:${{ inputs.version }}
-            ${{ inputs.registryHostname }}/${{ inputs.registryOrg }}/${{ inputs.name }}:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.appName }}:latest
+            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.appName }}:${{ inputs.version }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.appName }}:${{ github.sha }}
+      - name: Scan for vulnerabilities
+        if: inputs.enableContainerScan
+        uses: crazy-max/ghaction-container-scan@v3
+        with:
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ inputs.appName }}:latest
+          dockerfile: Containerfile
+          severity: ${{ env.IMAGE_SCAN_SEVERITY }}
+          severity_threshold: ${{ env.IMAGE_SCAN_SEVERITY_THRESHOLD }}
+          annotations: ${{ env.IMAGE_SCAN_ANNOTATIONS }}
+        env:
+          TRIVY_TIMEOUT: ${{ env.IMAGE_SCAN_TRIVY_TIMEOUT }}
+      - name: Push image to ECR
+        run: |
+          docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ inputs.appName }}
