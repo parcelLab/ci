@@ -28,14 +28,14 @@ jobs:
           echo "major_version=$MAJOR_VERSION" >> $GITHUB_OUTPUT
           echo "full_version=$TAG_NAME" >> $GITHUB_OUTPUT
       - name: Update major version tag
-        run: | 
+        run: |
           git config user.name "parcellab-dev-bot"
           git config user.email "dev.bot@parcellab.com"
            
           # Delete existing major version tag if it exists
           git tag -d ${{ steps.version.outputs.major_version }} || true
           git push -d origin ${{ steps.version.outputs.major_version }} || true
-          
+
           # Create new major version tag pointing to the same commit as the full version
           git tag ${{ steps.version.outputs.major_version }}
           git push origin tag ${{ steps.version.outputs.major_version }}
