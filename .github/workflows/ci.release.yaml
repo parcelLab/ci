@@ -1,0 +1,45 @@
+name: Github workflows
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/*.yaml"
+  pull_request:
+    paths:
+      - ".github/workflows/*.yaml"
+  workflow_dispatch:
+jobs:
+  update-major-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Extract major version
+        id: version
+        run: |
+          # Get the latest tag created by the release job
+          TAG_NAME="$(git describe --tags --abbrev=0)"
+          echo "Retrieved tag: $TAG_NAME"
+          # Extract major version (e.g., v8.2.7 -> v8)
+          MAJOR_VERSION="$(echo "$TAG_NAME" | sed -E 's/^v([0-9]+)\..*/v\1/')"
+          echo "major_version=$MAJOR_VERSION" >> "$GITHUB_OUTPUT"
+          echo "full_version=$TAG_NAME" >> "$GITHUB_OUTPUT"
+      - name: Update major version tag
+        run: |
+          git config user.name "parcellab-dev-bot"
+          git config user.email "dev.bot@parcellab.com"
+           
+          # Delete existing major version tag if it exists
+          git tag -d "${{ steps.version.outputs.major_version }}" || true
+          git push -d origin "${{ steps.version.outputs.major_version }}" || true
+
+          # Create new major version tag pointing to the same commit as the full version
+          git tag "${{ steps.version.outputs.major_version }}"
+          git push origin tag "${{ steps.version.outputs.major_version }}"
+  release:
+    uses: parcelLab/ci/.github/workflows/release.yaml@main
+    secrets:
+      repoAccessToken: ${{ secrets.REPO_ACCESS_TOKEN_OPEN_SOURCE }}
