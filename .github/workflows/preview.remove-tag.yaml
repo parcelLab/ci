@@ -1,0 +1,40 @@
+name: Remove preview tag from ECR
+
+on:
+  workflow_call:
+    inputs:
+      APPLICATION_NAME:
+        description: The name of the application
+        required: true
+        type: string
+    secrets:
+      AWS_ROLE_TO_ASSUME:
+        required: true
+        description: AWS OIDC role for GitHub to assume
+
+jobs:
+  remove-preview-tag:
+    permissions:
+      id-token: write
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-region: eu-central-1
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+      - name: Remove preview tag from ECR
+        run: |
+          # Check if repository exists
+          if aws ecr describe-repositories --repository-names ${{ inputs.APPLICATION_NAME }} 2>/dev/null; then
+            echo "Repository ${{ inputs.APPLICATION_NAME }} exists, attempting to remove preview-${{ github.event.pull_request.number }} tag..."
+            
+            # Remove the preview tag
+            aws ecr batch-delete-image \
+              --repository-name ${{ inputs.APPLICATION_NAME }} \
+              --image-ids imageTag=preview-${{ github.event.pull_request.number }} || \
+              echo "Tag preview-${{ github.event.pull_request.number }} not found or already removed"
+          else
+            echo "Repository ${{ inputs.APPLICATION_NAME }} does not exist, nothing to remove"
+          fi
