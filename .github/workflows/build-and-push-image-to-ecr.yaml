@@ -82,3 +82,4 @@ jobs:
           message: |
             Preview URL: https://${{ inputs.APPLICATION_NAME }}-preview-${{ inputs.PR_NUMBER }}.staging.parcellab.dev
             Preview Argo App: https://argocd.staging.parcellab.dev/applications/argocd/${{ inputs.APPLICATION_NAME }}-preview-${{ inputs.PR_NUMBER }}
+ 
