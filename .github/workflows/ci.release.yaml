@@ -1,14 +1,12 @@
-name: Github workflows
+name: Update major tag and release
 on:
   push:
     branches:
       - main
     paths:
       - ".github/workflows/*.yaml"
-  pull_request:
-    paths:
-      - ".github/workflows/*.yaml"
   workflow_dispatch:
+
 jobs:
   update-major-tag:
     runs-on: ubuntu-latest
