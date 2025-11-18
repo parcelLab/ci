@@ -62,7 +62,7 @@ jobs:
 
           LIFECYCLE_POLICY='{"rules":[
               {"rulePriority":1,"description":"Protect preview images from deletion","selection":{"tagStatus":"tagged","countType":"imageCountMoreThan","countNumber":5000},"action":{"type":"expire"}},
-              {"rulePriority":2,"description":"Keep last 500 images","selection":{"tagStatus":"any","tagPatternList":"preview-*","countType":"imageCountMoreThan","countNumber":500},"action":{"type":"expire"}}
+              {"rulePriority":2,"description":"Keep last 500 images","selection":{"tagStatus":"any","tagPatternList":["preview-*"],"countType":"imageCountMoreThan","countNumber":500},"action":{"type":"expire"}}
             ]}'
           aws ecr put-lifecycle-policy --repository-name ${{ inputs.APPLICATION_NAME }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
       - name: Set up Docker Buildx
