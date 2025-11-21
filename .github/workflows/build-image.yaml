@@ -75,9 +75,20 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
       - name: Create ECR repository if it doesn't exist
         run: |
-          aws ecr describe-repositories --repository-names ${{ github.event.deployment.payload.name }} || \
-          aws ecr create-repository --repository-name ${{ github.event.deployment.payload.name }}
-          LIFECYCLE_POLICY='{"rules":[{"rulePriority":1,"description":"Keep last 500 images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":500},"action":{"type":"expire"}}]}'
+          if ! aws ecr describe-repositories --repository-names ${{ github.event.deployment.payload.name }} 2>/dev/null; then
+            echo "Repository ${{ github.event.deployment.payload.name }} does not exist, creating it..."
+            aws ecr create-repository --repository-name ${{ github.event.deployment.payload.name }}
+            echo "Setting lifecycle policy..."
+          else
+            echo "Repository ${{ github.event.deployment.payload.name }} already exists, skipping creation"
+          fi
+
+          echo "Applying lifecycle policies"
+          LIFECYCLE_POLICY='{"rules":[
+              {"rulePriority":1,"description":"Preserve preview images","selection":{"tagStatus":"tagged","tagPatternList":["preview-*"],"countType":"sinceImagePushed","countNumber":365},"action":{"type":"expire"}},
+              {"rulePriority":2,"description":"Preserve production images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}}
+              {"rulePriority":3,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countNumber":7},"action":{"type":"expire"}}
+            ]}'
           aws ecr put-lifecycle-policy --repository-name ${{ github.event.deployment.payload.name }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
       - name: Login to Amazon ECR
         id: login-ecr
@@ -151,9 +162,20 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
       - name: Create ${{ matrix.containerfile_targets }} ECR repository if it doesn't exist
         run: |
-          aws ecr describe-repositories --repository-names ${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }} || \
-          aws ecr create-repository --repository-name ${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}
-          LIFECYCLE_POLICY='{"rules":[{"rulePriority":1,"description":"Keep last 500 images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":500},"action":{"type":"expire"}}]}'
+          if ! aws ecr describe-repositories --repository-names ${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }} 2>/dev/null; then
+            echo "Repository ${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }} does not exist, creating it..."
+            aws ecr create-repository --repository-name ${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}
+            echo "Setting lifecycle policy..."
+          else
+            echo "Repository ${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }} already exists, skipping creation"
+          fi
+
+          echo "Applying lifecycle policies"
+          LIFECYCLE_POLICY='{"rules":[
+              {"rulePriority":1,"description":"Preserve preview images","selection":{"tagStatus":"tagged","tagPatternList":["preview-*"],"countType":"sinceImagePushed","countNumber":365},"action":{"type":"expire"}},
+              {"rulePriority":2,"description":"Preserve production images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}}
+              {"rulePriority":3,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countNumber":7},"action":{"type":"expire"}}
+            ]}'
           aws ecr put-lifecycle-policy --repository-name ${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
       - name: Login to Amazon ECR
         id: login-ecr
