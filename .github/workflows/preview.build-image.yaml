@@ -62,9 +62,9 @@ jobs:
 
           echo "Applying lifecycle policies"
           LIFECYCLE_POLICY='{"rules":[
-              {"rulePriority":1,"description":"Preserve preview images","selection":{"tagStatus":"tagged","tagPatternList":["preview-*"],"countType":"sinceImagePushed","countNumber":365},"action":{"type":"expire"}},
-              {"rulePriority":2,"description":"Preserve production images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}}
-              {"rulePriority":3,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countNumber":7},"action":{"type":"expire"}}
+              {"rulePriority":1,"description":"Preserve preview images","selection":{"tagStatus":"tagged","tagPatternList":["preview-*"],"countType":"sinceImagePushed","countUnit":"days","countNumber":365},"action":{"type":"expire"}},
+              {"rulePriority":2,"description":"Preserve production images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}},
+              {"rulePriority":3,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
             ]}'
           aws ecr put-lifecycle-policy --repository-name ${{ inputs.APPLICATION_NAME }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
       - name: Set up Docker Buildx
