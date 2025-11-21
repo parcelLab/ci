@@ -1,8 +1,0 @@
-name: Update Main Version
-on:
-  push:
-    tags:
-      - "v*"
-jobs:
-  tag:
-    uses: parcelLab/ci/.github/workflows/main-version.yaml@main
