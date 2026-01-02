@@ -9,7 +9,6 @@ on:
       baseImageRegistry:
         required: false
         description: The registry to pull base images
-        default: dhi.io
         type: string
       contextPath:
         required: false
@@ -64,6 +63,7 @@ jobs:
       - name: Checkout current git repository
         uses: actions/checkout@v4
       - name: Login to base image registry
+        if: ${{ !contains(inputs.baseImageRegistry, '') }}
         uses: docker/login-action@v3
         with:
           registry: ${{ inputs.baseImageRegistry }}
