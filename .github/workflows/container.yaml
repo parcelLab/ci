@@ -69,7 +69,7 @@ jobs:
       - name: Checkout current git repository
         uses: actions/checkout@v4
       - name: Login to base image registry
-        if: ${{ inputs.baseImageRegistry && inputs.baseImageRegistry != '' }}
+        if: ${{ inputs.baseImageRegistry }}
         uses: docker/login-action@v3
         with:
           registry: ${{ inputs.baseImageRegistry }}
