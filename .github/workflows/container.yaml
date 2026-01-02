@@ -82,6 +82,13 @@ jobs:
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v4
+      - name: Validate base image registry secrets
+        if: ${{ inputs.baseImageRegistry }}
+        run: |
+          if [ -z "${{ secrets.baseImageRegistryUsername }}" ] || [ -z "${{ secrets.baseImageRegistryPassword }}" ]; then
+            echo "baseImageRegistry is set but baseImageRegistryUsername or baseImageRegistryPassword secrets are missing."
+            exit 1
+          fi
       - name: Login to base image registry
         if: ${{ inputs.baseImageRegistry }}
         uses: docker/login-action@v3
