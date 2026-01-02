@@ -8,7 +8,7 @@ on:
         type: string
       baseImageRegistry:
         required: false
-        description: The registry to pull base images
+        description: The registry to pull base images from
         type: string
       contextPath:
         required: false
