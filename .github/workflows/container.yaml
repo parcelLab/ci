@@ -53,6 +53,12 @@ on:
         required: false
         description: The password for the base image registry
 
+env:
+  IMAGE_SCAN_SEVERITY: LOW
+  IMAGE_SCAN_SEVERITY_THRESHOLD: CRITICAL
+  IMAGE_SCAN_ANNOTATIONS: true
+  IMAGE_SCAN_TRIVY_TIMEOUT: 10m
+
 jobs:
   build-ecr-single:
     permissions:
