@@ -9,11 +9,6 @@ on:
         required: true
         description: The author of the change that triggers the deployment
         type: string
-      useTags:
-        required: false
-        description: Push commits to env-named tags instead of main branch
-        detault: false
-        type: boolean
       containerContext:
         required: false
         default: .
@@ -52,6 +47,11 @@ on:
         required: false
         description: The url where the application is served
         type: string
+      useTags:
+        required: false
+        description: Push commits to env-named tags instead of main branch
+        default: false
+        type: boolean
       versionKey:
         required: false
         type: string
