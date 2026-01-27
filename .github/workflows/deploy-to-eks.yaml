@@ -1,0 +1,192 @@
+name: Kubernetes
+on:
+  workflow_call:
+    inputs:
+      artifactName:
+        required: false
+        description: Downloads a previously uploaded artifact (has to be in the same workflow). Both artifactPath and artifactName have to be passed.
+        default: ""
+        type: string
+      artifactPath:
+        required: false
+        description: Downloads a previously uploaded artifact (has to be in the same workflow). Both artifactPath and artifactName have to be passed.
+        default: ""
+        type: string
+      createGitHubDeployment:
+        required: false
+        default: false
+        type: boolean
+      enableContainerScan:
+        required: false
+        default: true
+        type: boolean
+      enableSlackNotification:
+        required: false
+        default: false
+        type: boolean
+      env:
+        required: true
+        type: string
+      imageTargets:
+        required: false
+        description: Sets targets for as many image builds as targets specified in Containerfile
+        default: ""
+        type: string
+      preScript:
+        required: false
+        description: Runs a script after repo checkout and before the docker image is built. Useful in case that you need to build a package outside of the docker image (and load the artifacts via copy).
+        default: ""
+        type: string
+      ref:
+        required: true
+        type: string
+      runner:
+        required: false
+        default: ubicloud-standard-2 # TODO: or ubuntu-latest?
+        type: string
+      sentryOrg:
+        required: false
+        type: string
+      sentryProject:
+        required: false
+        type: string
+      tagPath:
+        required: false
+        type: string
+    secrets:
+      # slackBotToken:
+      #   required: false
+      #   description: The Slack bot token to write messages in the desired channels (required if slack channel ids are provided)
+      AWS_ROLE_TO_ASSUME:
+        required: true
+        description: AWS OIDC role for GitHub to assume
+      repoAccessToken:
+        required: true
+        description: The Github token to perform operations cross-repo (not github.token!)
+
+jobs:
+  init:
+    runs-on: ${{ inputs.runner }}
+    outputs:
+      version: ${{ steps.vars.outputs.version }}
+    steps:
+      - name: Load deployment variables
+        id: vars
+        run: |
+          REF="${{ inputs.ref }}"
+          SHA="${{ github.sha }}"
+          if [[ "${{ inputs.env }}" == 'prod' ]]
+          then
+            # shellcheck disable=SC2086
+            echo "version=${REF##*/}" >> $GITHUB_OUTPUT
+          else
+            # shellcheck disable=SC2086
+            echo "version=${SHA:0:7}" >> $GITHUB_OUTPUT
+
+  build:
+    needs: init
+    runs-on: ${{ inputs.runner }}
+    permissions:
+      contents: read
+      id-token: write
+    uses: parcelLab/ci/.github/workflows/build-image.yaml@v9.0.0
+    with:
+      artifactName: ${{ inputs.artifactName }}
+      artifactPath: ${{ inputs.artifactPath }}
+      imageTargets: ${{ inputs.imageTargets }}
+      enableContainerScan: ${{ inputs.enableContainerScan }}
+      runner: ${{ inputs.runner }}
+      version: ${{ needs.initialize.outputs.version }}
+    secrets: inherit
+
+  commit:
+    needs: build
+    environment: ${{ github.event.deployment.payload.env }}
+    concurrency: commit-${{ inputs.deploymentRepoURL }}-${{ github.sha }}
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - name: Checkout current git repository
+        uses: actions/checkout@v6
+      - name: Deploy ${{ github.sha }} to ${{ github.event.deployment.environment }} values
+        uses: mikefarah/yq@v4.30.8
+        with:
+          cmd: yq '(.${{ inputs.tagPath }} = "${{ needs.initialize.outputs.version }}")' -i remote/${{ inputs.deploymentRepoPath }}/values.yaml
+      - name: Commit and push new tag
+        run: |
+          set -euxo pipefail
+          git config user.email "dev.bot@parcellab.com"
+          git config user.name "parcellab-dev-bot"
+          git add .chart/${{ inputs.env }}/values.yaml
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "chore(deploy): set ${{ inputs.env }} image tag to ${{ needs.kubernetes.outputs.version }}"
+          
+          if [ "${{ inputs.env }}" = "staging" ]; then
+            echo "Commit new tag to staging"
+            NEW_SHA=$(git rev-parse HEAD)
+            git tag -fa staging -m "staging deploy ${VERSION} (${NEW_SHA}) via ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" "${NEW_SHA}"
+            git push origin -f refs/tags/staging
+          else
+            echo "Commit new tag to ${{ inputs.env }}"
+            git push origin HEAD:main
+          fi
+
+  post-deploy:
+    needs: [commit]
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - if: inputs.enableSlackNotification
+        name: Send out Slack notification
+        continue-on-error: true
+        uses: darioblanco/slack-deployment@main
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.slackBotToken }}
+        with:
+          channel_id: ${{ needs.initialize.outputs.channel-id }}
+          deployment_description: ${{ github.event.deployment.payload.description == null && 'No description' || github.event.deployment.payload.description }}
+          deployment_name: ${{ github.event.deployment.payload.name == null && 'unknown' || github.event.deployment.payload.name }}
+          environment: ${{ github.event.deployment.payload.env == null && 'unknown' || github.event.deployment.payload.env }}
+          owner: ${{ github.event.deployment.payload.author == null && github.actor || github.event.deployment.payload.author }}
+          package: ${{ github.event.deployment.payload.name == null && 'unknown' || github.event.deployment.payload.name }}
+          ref: ${{ github.event.deployment.ref == null && 'unknown' || github.event.deployment.ref }}
+          repo: ${{ github.repository }}
+          sha: ${{ github.sha }}
+          status_url: ${{ github.event.deployment.payload.statusUrl == null && 'https://github.com' || github.event.deployment.payload.statusUrl }}
+          url: ${{ github.event.deployment.payload.url == null && 'https://github.com' || github.event.deployment.payload.url }}
+          version: ${{ needs.initialize.outputs.version }}
+      - if: inputs.sentryOrg != '' && inputs.sentryProject != ''
+        name: Create Sentry release
+        uses: getsentry/action-release@v1
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.sentryAuthToken }}
+          SENTRY_ORG: ${{ inputs.sentryOrg }}
+          SENTRY_PROJECT: ${{ inputs.sentryProject }}
+          SENTRY_URL: ${{ inputs.sentryUrl }}
+        with:
+          environment: ${{ inputs.sentryEnvironment != '' && inputs.sentryEnvironment || github.event.deployment.payload.env }}
+          set_commits: skip
+          version: ${{ needs.initialize.outputs.version }}
+        continue-on-error: true
+      - if: inputs.createGitHubDeployment
+        name: Create GitHub Deployment
+        uses: chrnorm/deployment-action@v2
+        with:
+          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+          ref: ${{ github.event.inputs.ref }}
+          environment: ${{ github.event.inputs.env }}
+          description: ${{ github.event.inputs.description != '' && github.event.inputs.description || format('Manual deployment {0}', github.sha) }}
+          auto-merge: false
+          payload: |
+            {"env":${{ toJSON(github.event.inputs.env) }},"name":"product-api","author":${{ toJSON(github.event.inputs.author) }},"description":${{ toJSON(github.event.inputs.description) }},"kubernetes":{"versionKey":"monolith.image.tag"}}
+      - if: inputs.createGitHubDeployment
+        name: Set GitHub Deployment status to successfull
+        uses: chrnorm/deployment-status@v2
+        with:
+          deployment-id: ${{ github.event.deployment.id }}
+          environment-url: ${{ github.event.deployment.payload.url }}
+          environment: ${{ github.event.deployment.payload.env }}
+          state: "success"
+          token: ${{ github.token }}
+      
