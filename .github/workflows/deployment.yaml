@@ -9,6 +9,11 @@ on:
         required: true
         description: The author of the change that triggers the deployment
         type: string
+      useTags:
+        required: false
+        description: Push commits to env-named tags instead of main branch
+        detault: false
+        type: boolean
       containerContext:
         required: false
         default: .
@@ -88,6 +93,7 @@ jobs:
               "description": ${{ toJSON(inputs.description) }},
               "env": ${{ toJSON(inputs.env) }},
               "name": "${{ inputs.appName }}",
+              "useTags": "${{ inputs.useTags }}"
               "container": {
                 "context": "${{ inputs.containerContext }}",
                 "file": "${{ inputs.Containerfile }}"
