@@ -191,25 +191,25 @@ jobs:
         uses: mikefarah/yq@v4.30.8
         with:
           cmd: yq '(.${{ github.event.deployment.payload.kubernetes.versionKey }} = "${{ needs.initialize.outputs.version }}")' -i remote/${{ inputs.deploymentRepoPath }}/values.yaml
-      - name: Commit and push new tag
         run: |
           set -euxo pipefail
+          cd remote
           git config user.email "dev.bot@parcellab.com"
           git config user.name "parcellab-dev-bot"
-          git add .chart/${{ inputs.env }}/values.yaml
+          git add .chart/${{ github.event.deployment.payload.env }}/values.yaml
           if git diff --cached --quiet; then
             echo "No changes to commit"
             exit 0
           fi
-          git commit -m "chore(deploy): set ${{ inputs.env }} image tag to ${{ needs.kubernetes.outputs.version }}"
+          git commit -m "chore(deploy): set ${{ github.event.deployment.payload.env }} image tag to ${{ needs.kubernetes.outputs.version }}"
           
-          if [ "${{ inputs.env }}" = "staging" ]; then
+          if [ "${{ github.event.deployment.payload.env }}" = "staging" ]; then
             echo "Commit new tag to staging"
             NEW_SHA=$(git rev-parse HEAD)
             git tag -fa staging -m "staging deploy ${{ needs.initialize.outputs.version }} (${NEW_SHA})" "${NEW_SHA}"
             git push origin -f refs/tags/staging
           else
-            echo "Commit new tag to ${{ inputs.env }}"
+            echo "Commit new tag to ${{ github.event.deployment.payload.env }}"
             git push origin HEAD:main
           fi
       - if: success()
