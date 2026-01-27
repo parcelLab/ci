@@ -202,7 +202,7 @@ jobs:
             echo "No changes to commit"
             exit 0
           fi
-          git commit -m "chore(deploy): set ${{ github.event.deployment.payload.env }} image tag to ${{ needs.kubernetes.outputs.version }}"
+          git commit -m "chore(deploy): set ${{ github.event.deployment.payload.env }} image tag to ${{ needs.initialize.outputs.version }}"
           
           if [ "${{ github.event.deployment.payload.env }}" = "staging" ]; then
             echo "Commit new tag to staging"
