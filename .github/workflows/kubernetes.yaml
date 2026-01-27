@@ -203,7 +203,7 @@ jobs:
             exit 0
           fi
           git commit -m "chore(deploy): set ${{ github.event.deployment.payload.env }} image tag to ${{ needs.initialize.outputs.version }}"
-          
+
           if [ "${{ github.event.deployment.payload.env }}" != "prod" ]; then
             echo "Set new image tag to ${{ github.event.deployment.payload.env }}"
             NEW_SHA=$(git rev-parse HEAD)
