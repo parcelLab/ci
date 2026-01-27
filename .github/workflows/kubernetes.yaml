@@ -205,12 +205,12 @@ jobs:
           git commit -m "chore(deploy): set ${{ github.event.deployment.payload.env }} image tag to ${{ needs.initialize.outputs.version }}"
           
           if [ "${{ github.event.deployment.payload.env }}" != "prod" ]; then
-            echo "Commit new tag to ${{ github.event.deployment.payload.env }}"
+            echo "Set new image tag to ${{ github.event.deployment.payload.env }}"
             NEW_SHA=$(git rev-parse HEAD)
             git tag -fa ${{ github.event.deployment.payload.env }} -m "${{ github.event.deployment.payload.env }} deploy ${{ needs.initialize.outputs.version }} (${NEW_SHA})" "${NEW_SHA}"
             git push origin -f refs/tags/${{ github.event.deployment.payload.env }}
           else
-            echo "Commit new tag to prod"
+            echo "Set new image tag to prod"
             git push origin main
           fi
       - if: success()
