@@ -191,20 +191,27 @@ jobs:
         uses: mikefarah/yq@v4.30.8
         with:
           cmd: yq '(.${{ github.event.deployment.payload.kubernetes.versionKey }} = "${{ needs.initialize.outputs.version }}")' -i remote/${{ inputs.deploymentRepoPath }}/values.yaml
-      - name: Commit deployment file
+      - name: Commit and push new tag
         run: |
-          cd remote
-          git config --global user.email "${{ inputs.botEmail }}"
-          git config --global user.name "${{ inputs.registryUsername }}"
-          git add .
-          git commit --allow-empty -m "chore(${{ github.event.deployment.payload.name }}): set ${{ github.event.deployment.payload.env }} version to ${{ needs.initialize.outputs.version }}"
-      - name: Push changes to ${{ inputs.deploymentRepoURL }} git repository
-        uses: ad-m/github-push-action@0fafdd62b84042d49ec0cb92d9cac7f7ce4ec79e
-        with:
-          repository: ${{ inputs.deploymentRepoURL }}
-          directory: remote
-          github_token: ${{ secrets.repoAccessToken }}
-          branch: main
+          set -euxo pipefail
+          git config user.email "dev.bot@parcellab.com"
+          git config user.name "parcellab-dev-bot"
+          git add .chart/${{ inputs.env }}/values.yaml
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "chore(deploy): set ${{ inputs.env }} image tag to ${{ needs.kubernetes.outputs.version }}"
+          
+          if [ "${{ inputs.env }}" = "staging" ]; then
+            echo "Commit new tag to staging"
+            NEW_SHA=$(git rev-parse HEAD)
+            git tag -fa staging -m "staging deploy ${{ needs.initialize.outputs.version }} (${NEW_SHA})" "${NEW_SHA}"
+            git push origin -f refs/tags/staging
+          else
+            echo "Commit new tag to ${{ inputs.env }}"
+            git push origin HEAD:main
+          fi
       - if: success()
         name: Successful ${{ github.event.deployment.payload.name }} deployment
         uses: chrnorm/deployment-status@v2
