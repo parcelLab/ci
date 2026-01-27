@@ -43,6 +43,9 @@ on:
       npmGithubReadToken:
         required: true
         description: The Github token with permissions to read NPM private packages
+      AWS_ROLE_TO_ASSUME:
+        required: true
+        description: AWS OIDC role for GitHub to assume
       baseImageRegistryUsername:
         required: false
         description: The username for the base image registry
