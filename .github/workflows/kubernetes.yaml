@@ -191,6 +191,7 @@ jobs:
         uses: mikefarah/yq@v4.30.8
         with:
           cmd: yq '(.${{ github.event.deployment.payload.kubernetes.versionKey }} = "${{ needs.initialize.outputs.version }}")' -i remote/${{ inputs.deploymentRepoPath }}/values.yaml
+      - name: Commit and push new image tag
         run: |
           set -euxo pipefail
           cd remote
