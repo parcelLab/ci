@@ -204,14 +204,14 @@ jobs:
           fi
           git commit -m "chore(deploy): set ${{ github.event.deployment.payload.env }} image tag to ${{ needs.initialize.outputs.version }}"
           
-          if [ "${{ github.event.deployment.payload.env }}" = "staging" ]; then
-            echo "Commit new tag to staging"
-            NEW_SHA=$(git rev-parse HEAD)
-            git tag -fa staging -m "staging deploy ${{ needs.initialize.outputs.version }} (${NEW_SHA})" "${NEW_SHA}"
-            git push origin -f refs/tags/staging
-          else
+          if [ "${{ github.event.deployment.payload.env }}" != "prod" ]; then
             echo "Commit new tag to ${{ github.event.deployment.payload.env }}"
-            git push origin HEAD:main
+            NEW_SHA=$(git rev-parse HEAD)
+            git tag -fa ${{ github.event.deployment.payload.env }} -m "${{ github.event.deployment.payload.env }} deploy ${{ needs.initialize.outputs.version }} (${NEW_SHA})" "${NEW_SHA}"
+            git push origin -f refs/tags/${{ github.event.deployment.payload.env }}
+          else
+            echo "Commit new tag to prod"
+            git push origin main
           fi
       - if: success()
         name: Successful ${{ github.event.deployment.payload.name }} deployment
