@@ -175,7 +175,6 @@ jobs:
       artifactPath: ${{ inputs.artifactPath }}
       imageTargets: ${{ inputs.imageTargets }}
       preScript: ${{ inputs.preScript }}
-      registryUsername: ${{ inputs.registryUsername }}
       enableContainerScan: ${{ inputs.enableContainerScan }}
       runner: ${{ inputs.runner }}
       baseImageRegistry: ${{ inputs.baseImageRegistry }}
