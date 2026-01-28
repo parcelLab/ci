@@ -29,6 +29,14 @@ on:
         required: false
         description: EKS namespace
         type: string
+      pushTarget:
+        required: false
+        description: Push commits to env-named tags or to the main branch
+        type: choice
+        options:
+          - main-branch
+          - env-tag
+        default: main-branch
       ref:
         required: false
         description: The github ref to deploy
@@ -47,14 +55,6 @@ on:
         required: false
         description: The url where the application is served
         type: string
-      pushTarget:
-        required: false
-        description: Push commits to env-named tags or to the main branch
-        type: choice
-        options:
-          - main-branch
-          - env-tag
-        default: main-branch
       versionKey:
         required: false
         type: string
