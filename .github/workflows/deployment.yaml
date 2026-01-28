@@ -29,14 +29,11 @@ on:
         required: false
         description: EKS namespace
         type: string
-      pushTarget:
+      pushToEnvTag:
         required: false
-        description: Push commits to env-named tags or to the main branch
-        type: choice
-        options:
-          - main-branch
-          - env-tag
-        default: main-branch
+        description: Push commits to env-named tags instead of the main branch
+        type: boolean
+        default: false
       ref:
         required: false
         description: The github ref to deploy
@@ -96,7 +93,6 @@ jobs:
               "description": ${{ toJSON(inputs.description) }},
               "env": ${{ toJSON(inputs.env) }},
               "name": "${{ inputs.appName }}",
-              "pushTarget": "${{ inputs.pushTarget }}"
               "container": {
                 "context": "${{ inputs.containerContext }}",
                 "file": "${{ inputs.Containerfile }}"
@@ -105,6 +101,7 @@ jobs:
                 "namespace": "${{ inputs.namespace }}",
                 "versionKey": "${{ inputs.versionKey }}"
               },
+              "pushToEnvTag": "${{ inputs.pushToEnvTag }}",
               "statusUrl": ${{ toJSON(steps.k8s.outputs.status-url) }},
               "url": ${{ toJSON(steps.k8s.outputs.url) }}
             }
