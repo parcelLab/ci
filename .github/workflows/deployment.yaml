@@ -47,11 +47,14 @@ on:
         required: false
         description: The url where the application is served
         type: string
-      useTags:
+      pushTarget:
         required: false
-        description: Push commits to env-named tags instead of main branch
-        default: false
-        type: boolean
+        description: Push commits to env-named tags or to the main branch
+        type: choice
+        options:
+          - main-branch
+          - env-tag
+        default: main-branch
       versionKey:
         required: false
         type: string
@@ -93,7 +96,7 @@ jobs:
               "description": ${{ toJSON(inputs.description) }},
               "env": ${{ toJSON(inputs.env) }},
               "name": "${{ inputs.appName }}",
-              "useTags": "${{ inputs.useTags }}"
+              "pushTarget": "${{ inputs.pushTarget }}"
               "container": {
                 "context": "${{ inputs.containerContext }}",
                 "file": "${{ inputs.Containerfile }}"
