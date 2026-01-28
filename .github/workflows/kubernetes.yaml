@@ -195,23 +195,28 @@ jobs:
         run: |
           set -euxo pipefail
           cd remote
-          git config user.email "dev.bot@parcellab.com"
-          git config user.name "parcellab-dev-bot"
-          git add .chart/${{ github.event.deployment.payload.env }}/values.yaml
+          git config user.email "$GIT_USER_EMAIL"
+          git config user.name "$GIT_USER_NAME"
+          git add .chart/$ENV/values.yaml
           if git diff --cached --quiet; then
             echo "No changes to commit"
             exit 0
           fi
-          git commit -m "chore(deploy): set ${{ github.event.deployment.payload.env }} image tag to ${{ needs.initialize.outputs.version }}"
-
-          if [ "${{ github.event.deployment.payload.pushToEnvTag }}" ]; then
-            echo "Set new image tag to ${{ github.event.deployment.payload.env }}"
+          git commit -m "chore(deploy): set $ENV image tag to $VERSION"
+          if [ "$PUSH_TO_ENV_TAG" = "true" ]; then
+            echo "Set new image tag to $ENV"
             NEW_SHA=$(git rev-parse HEAD)
-            git tag -fa ${{ github.event.deployment.payload.env }} -m "${{ github.event.deployment.payload.env }} deploy ${{ needs.initialize.outputs.version }} (${NEW_SHA})" "${NEW_SHA}"
-            git push origin -f refs/tags/${{ github.event.deployment.payload.env }}
+            git tag -fa "$ENV" -m "$ENV deploy $VERSION ($NEW_SHA)" "$NEW_SHA"
+            git push origin -f "refs/tags/$ENV"
           else
             git push origin main
           fi
+        env:
+          GIT_USER_EMAIL: dev.bot@parcellab.com
+          GIT_USER_NAME: parcellab-dev-bot
+          ENV: ${{ github.event.deployment.payload.env }}
+          VERSION: ${{ needs.initialize.outputs.version }}
+          PUSH_TO_ENV_TAG: ${{ github.event.deployment.payload.pushToEnvTag }}
       - if: success()
         name: Successful ${{ github.event.deployment.payload.name }} deployment
         uses: chrnorm/deployment-status@v2
