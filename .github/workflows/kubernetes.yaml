@@ -172,7 +172,7 @@ jobs:
 
   build:
     needs: [initialize]
-    uses: parcelLab/ci/.github/workflows/build-image.yaml@chore--allow-additional-base-image-registry-for-dh.io
+    uses: parcelLab/ci/.github/workflows/build-image.yaml
     with:
       artifactName: ${{ inputs.artifactName }}
       artifactPath: ${{ inputs.artifactPath }}
