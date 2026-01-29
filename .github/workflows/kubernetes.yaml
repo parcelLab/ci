@@ -121,7 +121,7 @@ on:
         required: false
         description: The password for the base image registry
       AWS_ROLE_TO_ASSUME:
-        required: false
+        required: true
         description: AWS OIDC role for GitHub to assume
 
 jobs:
