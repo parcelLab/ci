@@ -32,9 +32,26 @@ on:
         description: Runner type
         default: ubuntu-latest
         type: string
+      baseImageRegistry:
+        required: false
+        description: The registry to pull base images from
+        type: string
       version:
         required: true
         type: string
+    secrets:
+      npmGithubReadToken:
+        required: true
+        description: The Github token with permissions to read NPM private packages
+      AWS_ROLE_TO_ASSUME:
+        required: true
+        description: AWS OIDC role for GitHub to assume
+      baseImageRegistryUsername:
+        required: false
+        description: The username for the base image registry
+      baseImageRegistryPassword:
+        required: false
+        description: The password for the base image registry
 
 env:
   IMAGE_SCAN_SEVERITY: LOW
@@ -66,6 +83,20 @@ jobs:
         with:
           name: ${{ inputs.artifactName }}
           path: ${{ inputs.artifactPath }}
+      - name: Validate base image registry secrets
+        if: ${{ inputs.baseImageRegistry }}
+        run: |
+          if [ -z "${{ secrets.baseImageRegistryUsername }}" ] || [ -z "${{ secrets.baseImageRegistryPassword }}" ]; then
+            echo "baseImageRegistry is set but baseImageRegistryUsername or baseImageRegistryPassword secrets are missing."
+            exit 1
+          fi
+      - name: Login to base image registry
+        if: ${{ inputs.baseImageRegistry }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ inputs.baseImageRegistry }}
+          username: ${{ secrets.baseImageRegistryUsername }}
+          password: ${{ secrets.baseImageRegistryPassword }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Configure AWS credentials
@@ -153,6 +184,20 @@ jobs:
         with:
           name: ${{ inputs.artifactName }}
           path: ${{ inputs.artifactPath }}
+      - name: Validate base image registry secrets
+        if: ${{ inputs.baseImageRegistry }}
+        run: |
+          if [ -z "${{ secrets.baseImageRegistryUsername }}" ] || [ -z "${{ secrets.baseImageRegistryPassword }}" ]; then
+            echo "baseImageRegistry is set but baseImageRegistryUsername or baseImageRegistryPassword secrets are missing."
+            exit 1
+          fi
+      - name: Login to base image registry
+        if: ${{ inputs.baseImageRegistry }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ inputs.baseImageRegistry }}
+          username: ${{ secrets.baseImageRegistryUsername }}
+          password: ${{ secrets.baseImageRegistryPassword }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Configure AWS credentials
