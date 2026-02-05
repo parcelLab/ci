@@ -25,6 +25,11 @@ on:
         description: If provided, downloads a previously uploaded artifact (has to be in the same workflow). Both artifactPath and artifactName have to be passed.
         default: ""
         type: string
+      PREPROD_PREVIEW_ENABLED:
+        description: Whether to include preprod preview URL in comment (for apps with preprod preview environments)
+        required: false
+        type: boolean
+        default: false
     secrets:
       AWS_ROLE_TO_ASSUME:
         required: true
@@ -87,9 +92,22 @@ jobs:
     if: ${{ inputs.GHA_TRIGGER_EVENT != 'synchronize' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Build comment message
+        id: build-message
+        run: |
+          MESSAGE="Preview URL: https://${{ inputs.APPLICATION_NAME }}-preview-${{ inputs.PR_NUMBER }}.staging.parcellab.dev"
+          if [ "${{ inputs.PREPROD_PREVIEW_ENABLED }}" == "true" ]; then
+            MESSAGE="${MESSAGE}
+          Preview URL (preprod): https://${{ inputs.APPLICATION_NAME }}-preprod-preview-${{ inputs.PR_NUMBER }}.staging.parcellab.dev"
+          fi
+          MESSAGE="${MESSAGE}
+          Preview Argo App: https://argocd.staging.parcellab.dev/applications/argocd/${{ inputs.APPLICATION_NAME }}-preview-${{ inputs.PR_NUMBER }}"
+          {
+            echo "message<<EOF"
+            echo "$MESSAGE"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
       - name: Comment PR
         uses: thollander/actions-comment-pull-request@v3
         with:
-          message: |
-            Preview URL: https://${{ inputs.APPLICATION_NAME }}-preview-${{ inputs.PR_NUMBER }}.staging.parcellab.dev
-            Preview Argo App: https://argocd.staging.parcellab.dev/applications/argocd/${{ inputs.APPLICATION_NAME }}-preview-${{ inputs.PR_NUMBER }}
+          message: ${{ steps.build-message.outputs.message }}
