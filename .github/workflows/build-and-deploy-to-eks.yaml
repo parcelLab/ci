@@ -20,10 +20,6 @@ on:
         required: false
         default: true
         type: boolean
-      enableSlackNotification:
-        required: false
-        default: false
-        type: boolean
       env:
         required: true
         type: string
@@ -32,17 +28,12 @@ on:
         description: Sets targets for as many image builds as targets specified in Containerfile
         default: ""
         type: string
-      preScript:
-        required: false
-        description: Runs a script after repo checkout and before the docker image is built. Useful in case that you need to build a package outside of the docker image (and load the artifacts via copy).
-        default: ""
-        type: string
       ref:
         required: true
         type: string
       runner:
         required: false
-        default: ubicloud-standard-2 # TODO: or ubuntu-latest?
+        default: ubuntu-latest
         type: string
       sentryOrg:
         required: false
@@ -50,19 +41,19 @@ on:
       sentryProject:
         required: false
         type: string
+      slackChannelId:
+        required: false
+        type: string
       tagPath:
         required: false
         type: string
     secrets:
-      # slackBotToken:
-      #   required: false
-      #   description: The Slack bot token to write messages in the desired channels (required if slack channel ids are provided)
+      slackBotToken:
+        required: false
+        description: The Slack bot token to write messages in the desired channels (required if slack channel ids are provided)
       AWS_ROLE_TO_ASSUME:
         required: true
         description: AWS OIDC role for GitHub to assume
-      repoAccessToken:
-        required: true
-        description: The Github token to perform operations cross-repo (not github.token!)
 
 jobs:
   init:
@@ -137,15 +128,15 @@ jobs:
     needs: [commit]
     runs-on: ${{ inputs.runner }}
     steps:
-      - if: inputs.enableSlackNotification
+      - if: inputs.slackChannelId
         name: Send out Slack notification
         continue-on-error: true
         uses: darioblanco/slack-deployment@main
         env:
           SLACK_BOT_TOKEN: ${{ secrets.slackBotToken }}
         with:
-          channel_id: ${{ needs.initialize.outputs.channel-id }}
-          deployment_description: ${{ github.event.deployment.payload.description == null && 'No description' || github.event.deployment.payload.description }}
+          channel_id: ${{ inputs.slackChannelId }}
+          deployment_description: "No description"
           deployment_name: ${{ github.event.deployment.payload.name == null && 'unknown' || github.event.deployment.payload.name }}
           environment: ${{ github.event.deployment.payload.env == null && 'unknown' || github.event.deployment.payload.env }}
           owner: ${{ github.event.deployment.payload.author == null && github.actor || github.event.deployment.payload.author }}
