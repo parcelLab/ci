@@ -147,6 +147,9 @@ jobs:
         with:
           cmd: yq '(.${{ inputs.tagPath }} = "${{ needs.init.outputs.version }}")' -i ${{ inputs.deploymentRepoPath }}/values.yaml
       - name: Commit and push new tag
+        env:
+          env: ${{ inputs.env }}
+          version: ${{ needs.init.outputs.version }}
         run: |
           set -euxo pipefail
           git config user.email "dev.bot@parcellab.com"
