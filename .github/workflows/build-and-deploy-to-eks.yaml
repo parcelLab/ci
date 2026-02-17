@@ -12,6 +12,14 @@ on:
         description: Downloads a previously uploaded artifact (has to be in the same workflow). Both artifactPath and artifactName have to be passed.
         default: ""
         type: string
+      appName:
+        required: false
+        type: string
+        default: ""
+      environment:
+        required: false
+        type: string
+        default: ""
       description:
         required: false
         type: string
@@ -101,7 +109,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: parcelLab/ci/.github/workflows/build-image.yaml@v8
+    uses: ./.github/workflows/build-image.yaml
     with:
       artifactName: ${{ inputs.artifactName }}
       artifactPath: ${{ inputs.artifactPath }}
@@ -109,8 +117,8 @@ jobs:
       enableContainerScan: ${{ inputs.enableContainerScan }}
       runner: ${{ inputs.runner }}
       version: ${{ needs.init.outputs.version }}
-      appName: ${{ inputs.artifactName }}
-      environment: ${{ inputs.env }}
+      appName: ${{ inputs.appName }}
+      environment: ${{ inputs.environment }}
     secrets: inherit
 
   commit:
