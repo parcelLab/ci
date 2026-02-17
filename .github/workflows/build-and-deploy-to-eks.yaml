@@ -109,6 +109,8 @@ jobs:
       enableContainerScan: ${{ inputs.enableContainerScan }}
       runner: ${{ inputs.runner }}
       version: ${{ needs.init.outputs.version }}
+      appName: ${{ inputs.artifactName }}
+      environment: ${{ inputs.env }}
     secrets: inherit
 
   commit:

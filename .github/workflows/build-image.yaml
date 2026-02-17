@@ -30,6 +30,12 @@ on:
       version:
         required: true
         type: string
+      appName:
+        required: false
+        type: string
+      environment:
+        required: false
+        type: string
 
 env:
   IMAGE_SCAN_SEVERITY: LOW
@@ -43,8 +49,11 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    environment: ${{ github.event.deployment.payload.env }}
+    environment: ${{ inputs.environment != '' && inputs.environment || github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
+    env:
+      APP_NAME: ${{ inputs.appName != '' && inputs.appName || inputs.artifactName != '' && inputs.artifactName || github.event.deployment.payload.name }}
+      ENVIRONMENT: ${{ inputs.environment != '' && inputs.environment || github.event.deployment.payload.env }}
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v4
@@ -70,12 +79,12 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
       - name: Create ECR repository if it doesn't exist
         run: |
-          if ! aws ecr describe-repositories --repository-names ${{ github.event.deployment.payload.name }} 2>/dev/null; then
-            echo "Repository ${{ github.event.deployment.payload.name }} does not exist, creating it..."
-            aws ecr create-repository --repository-name ${{ github.event.deployment.payload.name }}
+          if ! aws ecr describe-repositories --repository-names ${{ env.APP_NAME }} 2>/dev/null; then
+            echo "Repository ${{ env.APP_NAME }} does not exist, creating it..."
+            aws ecr create-repository --repository-name ${{ env.APP_NAME }}
             echo "Setting lifecycle policy..."
           else
-            echo "Repository ${{ github.event.deployment.payload.name }} already exists, skipping creation"
+            echo "Repository ${{ env.APP_NAME }} already exists, skipping creation"
           fi
 
           echo "Applying lifecycle policies"
@@ -84,7 +93,7 @@ jobs:
               {"rulePriority":2,"description":"Preserve production images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}},
               {"rulePriority":3,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
             ]}'
-          aws ecr put-lifecycle-policy --repository-name ${{ github.event.deployment.payload.name }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
+          aws ecr put-lifecycle-policy --repository-name ${{ env.APP_NAME }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -94,24 +103,24 @@ jobs:
           build-args: |
             GITHUB_SHA=${{ github.sha }}
             VERSION=${{ inputs.version }}
-            APP_NAME=${{ github.event.deployment.payload.name }}
-            ENVIRONMENT=${{ github.event.deployment.payload.env }}
+            APP_NAME=${{ env.APP_NAME }}
+            ENVIRONMENT=${{ env.ENVIRONMENT }}
             NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
-          cache-from: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:cache
-          cache-to: mode=max,image-manifest=true,oci-mediatypes=true,type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:cache
+          cache-from: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ env.APP_NAME }}:cache
+          cache-to: mode=max,image-manifest=true,oci-mediatypes=true,type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ env.APP_NAME }}:cache
           context: ${{ github.event.deployment.payload.container.context }}
           load: true
           file: ${{ github.event.deployment.payload.container.file }}
           platforms: linux/amd64
           tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:latest
-            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:${{ inputs.version }}
-            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.APP_NAME }}:latest
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.APP_NAME }}:${{ inputs.version }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.APP_NAME }}:${{ github.sha }}
       - name: Scan for vulnerabilities
         if: inputs.enableContainerScan
         uses: crazy-max/ghaction-container-scan@v3
         with:
-          image: ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:latest
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.APP_NAME }}:latest
           dockerfile: Containerfile
           severity: ${{ env.IMAGE_SCAN_SEVERITY }}
           severity_threshold: ${{ env.IMAGE_SCAN_SEVERITY_THRESHOLD }}
@@ -120,18 +129,21 @@ jobs:
           TRIVY_TIMEOUT: ${{ env.IMAGE_SCAN_TRIVY_TIMEOUT }}
       - name: Push image to ECR
         run: |
-          docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}
+          docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ env.APP_NAME }}
 
   build-ecr-matrix:
     if: inputs.imageTargets != ''
     permissions:
       id-token: write
       contents: read
-    environment: ${{ github.event.deployment.payload.env }}
+    environment: ${{ inputs.environment != '' && inputs.environment || github.event.deployment.payload.env }}
     runs-on: ${{ inputs.runner }}
     strategy:
       matrix:
         containerfile_targets: ${{ fromJson(inputs.imageTargets) }}
+    env:
+      APP_NAME: ${{ inputs.appName != '' && inputs.appName || inputs.artifactName != '' && inputs.artifactName || github.event.deployment.payload.name }}
+      ENVIRONMENT: ${{ inputs.environment != '' && inputs.environment || github.event.deployment.payload.env }}
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v4
@@ -157,12 +169,12 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
       - name: Create ${{ matrix.containerfile_targets }} ECR repository if it doesn't exist
         run: |
-          if ! aws ecr describe-repositories --repository-names ${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }} 2>/dev/null; then
-            echo "Repository ${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }} does not exist, creating it..."
-            aws ecr create-repository --repository-name ${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}
+          if ! aws ecr describe-repositories --repository-names ${{ env.APP_NAME }}-${{ matrix.containerfile_targets }} 2>/dev/null; then
+            echo "Repository ${{ env.APP_NAME }}-${{ matrix.containerfile_targets }} does not exist, creating it..."
+            aws ecr create-repository --repository-name ${{ env.APP_NAME }}-${{ matrix.containerfile_targets }}
             echo "Setting lifecycle policy..."
           else
-            echo "Repository ${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }} already exists, skipping creation"
+            echo "Repository ${{ env.APP_NAME }}-${{ matrix.containerfile_targets }} already exists, skipping creation"
           fi
 
           echo "Applying lifecycle policies"
@@ -171,7 +183,7 @@ jobs:
               {"rulePriority":2,"description":"Preserve production images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}},
               {"rulePriority":3,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
             ]}'
-          aws ecr put-lifecycle-policy --repository-name ${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
+          aws ecr put-lifecycle-policy --repository-name ${{ env.APP_NAME }}-${{ matrix.containerfile_targets }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
@@ -181,25 +193,25 @@ jobs:
           build-args: |
             GITHUB_SHA=${{ github.sha }}
             VERSION=${{ inputs.version }}
-            APP_NAME=${{ github.event.deployment.payload.name }}
-            ENVIRONMENT=${{ github.event.deployment.payload.env }}
+            APP_NAME=${{ env.APP_NAME }}
+            ENVIRONMENT=${{ env.ENVIRONMENT }}
             NPM_GITHUB_TOKEN=${{ secrets.npmGithubReadToken }}
-          cache-from: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:cache
-          cache-to: mode=max,image-manifest=true,oci-mediatypes=true,type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}:cache
+          cache-from: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ env.APP_NAME }}:cache
+          cache-to: mode=max,image-manifest=true,oci-mediatypes=true,type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ env.APP_NAME }}:cache
           context: ${{ github.event.deployment.payload.container.context }}
           load: true
           file: ${{ github.event.deployment.payload.container.file }}
           platforms: linux/amd64
           tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:latest
-            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:${{ inputs.version }}
-            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.APP_NAME }}-${{ matrix.containerfile_targets }}:latest
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.APP_NAME }}-${{ matrix.containerfile_targets }}:${{ inputs.version }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ env.APP_NAME }}-${{ matrix.containerfile_targets }}:${{ github.sha }}
           target: ${{ matrix.containerfile_targets }}
       - name: Scan for vulnerabilities
         if: inputs.enableContainerScan
         uses: crazy-max/ghaction-container-scan@v3
         with:
-          image: ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}:latest
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.APP_NAME }}-${{ matrix.containerfile_targets }}:latest
           dockerfile: Containerfile
           severity: ${{ env.IMAGE_SCAN_SEVERITY }}
           severity_threshold: ${{ env.IMAGE_SCAN_SEVERITY_THRESHOLD }}
@@ -208,4 +220,4 @@ jobs:
           TRIVY_TIMEOUT: ${{ env.IMAGE_SCAN_TRIVY_TIMEOUT }}
       - name: Push ${{ matrix.containerfile_targets }} image to ECR
         run: |
-          docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }}
+          docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ env.APP_NAME }}-${{ matrix.containerfile_targets }}
