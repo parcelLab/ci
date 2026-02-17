@@ -94,6 +94,7 @@ jobs:
           else
             # shellcheck disable=SC2086
             echo "version=${SHA:0:7}" >> $GITHUB_OUTPUT
+          fi
 
   build:
     needs: init
