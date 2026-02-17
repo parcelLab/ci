@@ -148,22 +148,19 @@ jobs:
           set -euxo pipefail
           git config user.email "dev.bot@parcellab.com"
           git config user.name "parcellab-dev-bot"
-          git add ${{ inputs.deploymentRepoPath }}/values.yaml
+          git add .
           if git diff --cached --quiet; then
             echo "No changes to commit"
             exit 0
           fi
-          git commit -m "chore(deploy): set ${{ inputs.env }} image tag to ${{ needs.init.outputs.version }}"
-          
-          if [ "${{ inputs.env }}" = "staging" ]; then
-            echo "Commit new tag to staging"
+          git commit -m "chore(deploy): set $ENV image tag to $VERSION"
+          if [ "$PUSH_TO_ENV_TAG" = "true" ]; then
+            echo "Set new image tag to $ENV"
             NEW_SHA=$(git rev-parse HEAD)
-            VERSION="${{ needs.init.outputs.version }}"
-            git tag -fa staging -m "staging deploy ${VERSION} (${NEW_SHA}) via ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" "${NEW_SHA}"
-            git push origin -f refs/tags/staging
+            git tag -fa "$ENV" -m "$ENV deploy $VERSION ($NEW_SHA)" "$NEW_SHA"
+            git push origin -f "refs/tags/$ENV"
           else
-            echo "Commit new tag to ${{ inputs.env }}"
-            git push origin HEAD:main
+            git push origin main
           fi
 
   post-deploy:
