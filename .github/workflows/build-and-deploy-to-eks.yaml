@@ -97,7 +97,6 @@ jobs:
 
   build:
     needs: init
-    runs-on: ${{ inputs.runner }}
     permissions:
       contents: read
       id-token: write
