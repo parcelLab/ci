@@ -72,6 +72,14 @@ on:
       tagPath:
         required: false
         type: string
+      context:
+        required: false
+        type: string
+        default: "."
+      dockerfile:
+        required: false
+        type: string
+        default: "Containerfile"
     secrets:
       slackBotToken:
         required: false
@@ -119,6 +127,8 @@ jobs:
       version: ${{ needs.init.outputs.version }}
       appName: ${{ inputs.appName }}
       environment: ${{ inputs.environment }}
+      context: ${{ inputs.context }}
+      dockerfile: ${{ inputs.dockerfile }}
     secrets: inherit
 
   commit:
