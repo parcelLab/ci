@@ -100,7 +100,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: parcelLab/ci/.github/workflows/build-image.yaml@v9.0.0
+    uses: parcelLab/ci/.github/workflows/build-image.yaml@v8
     with:
       artifactName: ${{ inputs.artifactName }}
       artifactPath: ${{ inputs.artifactPath }}
