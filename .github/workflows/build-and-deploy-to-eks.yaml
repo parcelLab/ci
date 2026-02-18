@@ -136,7 +136,7 @@ jobs:
     secrets: inherit
 
   commit:
-    needs: build
+    needs: [init, build]
     concurrency: commit-${{ inputs.deploymentRepoURL }}-${{ github.sha }}
     runs-on: ${{ inputs.runner }}
     steps:
@@ -166,6 +166,7 @@ jobs:
             git tag -fa "$env" -m "$env deploy $version ($NEW_SHA)" "$NEW_SHA"
             git push origin -f "refs/tags/$env"
           else
+            git pull origin main --rebase
             git push origin HEAD:main
           fi
 
