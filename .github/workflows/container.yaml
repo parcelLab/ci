@@ -107,10 +107,14 @@ jobs:
         run: |
           aws ecr describe-repositories --repository-names ${{ inputs.appName }} || \
           aws ecr create-repository --repository-name ${{ inputs.appName }}
-          LIFECYCLE_POLICY='{"rules":[{"rulePriority":1,"description":"Keep last 500 images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":500},"action":{"type":"expire"}}]}'
-          aws ecr put-lifecycle-policy --repository-name ${{ inputs.appName }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
-      - name: Login to Amazon ECR
-        id: login-ecr
+          echo "Applying lifecycle policies"
+          LIFECYCLE_POLICY='{"rules":[
+              {"rulePriority":1,"description":"Preserve preview images","selection":{"tagStatus":"tagged","tagPatternList":["preview-*"],"countType":"sinceImagePushed","countUnit":"days","countNumber":365},"action":{"type":"expire"}},
+              {"rulePriority":2,"description":"Preserve production images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}},
+              {"rulePriority":3,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
+            ]}'
+            aws ecr put-lifecycle-policy --repository-name ${{ inputs.appName }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
+      - id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
       - name: Build image
         uses: docker/build-push-action@v6
