@@ -29,7 +29,7 @@ jobs:
         run: |
           git config user.name "parcellab-dev-bot"
           git config user.email "dev.bot@parcellab.com"
-           
+
           # Delete existing major version tag if it exists
           git tag -d "${{ steps.version.outputs.major_version }}" || true
           git push -d origin "${{ steps.version.outputs.major_version }}" || true
@@ -38,6 +38,6 @@ jobs:
           git tag "${{ steps.version.outputs.major_version }}"
           git push origin tag "${{ steps.version.outputs.major_version }}"
   release:
-    uses: parcelLab/ci/.github/workflows/release.yaml@main
+    uses: parcelLab/ci/.github/workflows/release.yaml@v8
     secrets:
       repoAccessToken: ${{ secrets.REPO_ACCESS_TOKEN_OPEN_SOURCE }}
