@@ -38,6 +38,6 @@ jobs:
           git tag "${{ steps.version.outputs.major_version }}"
           git push origin tag "${{ steps.version.outputs.major_version }}"
   release:
-    uses: parcelLab/ci/.github/workflows/release.yaml@v8
+    uses: parcelLab/ci/.github/workflows/release.yaml@v8.3.3
     secrets:
       repoAccessToken: ${{ secrets.REPO_ACCESS_TOKEN_OPEN_SOURCE }}
