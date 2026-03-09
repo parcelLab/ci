@@ -114,7 +114,7 @@ jobs:
               {"rulePriority":3,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
             ]}'
             aws ecr put-lifecycle-policy --repository-name ${{ inputs.appName }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
-        id: login-ecr
+      - id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
       - name: Build image
         uses: docker/build-push-action@v6
