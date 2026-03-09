@@ -113,7 +113,7 @@ jobs:
               {"rulePriority":2,"description":"Preserve production images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}},
               {"rulePriority":3,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
             ]}'
-          aws ecr put-lifecycle-policy --repository-name ${{ github.event.deployment.payload.name }}-${{ matrix.containerfile_targets }} --lifecycle-policy-text "$LIFECYCLE_POLICY"      - name: Login to Amazon ECR
+            aws ecr put-lifecycle-policy --repository-name ${{ inputs.appName }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
       - name: Build image
