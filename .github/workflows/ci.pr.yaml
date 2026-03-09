@@ -9,7 +9,7 @@ on:
       - synchronize
 jobs:
   pr:
-    uses: parcelLab/ci/.github/workflows/pr.yaml@main
+    uses: parcelLab/ci/.github/workflows/pr.yaml@v8
     secrets:
       repoAccessToken: ${{ secrets.GITHUB_TOKEN }}
   actionlint:
@@ -24,4 +24,4 @@ jobs:
       - name: Run actionlint
         run: /home/runner/go/bin/actionlint
   yamllint:
-    uses: parcelLab/ci/.github/workflows/yaml.yaml@main
+    uses: parcelLab/ci/.github/workflows/yaml.yaml@v8
