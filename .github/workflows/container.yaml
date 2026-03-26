@@ -136,7 +136,7 @@ jobs:
             ${{ steps.login-ecr.outputs.registry }}/${{ inputs.appName }}:${{ github.sha }}
       - name: Scan for vulnerabilities
         if: inputs.enableContainerScan
-        uses: crazy-max/ghaction-container-scan@v3
+        uses: crazy-max/ghaction-container-scan@v4
         with:
           image: ${{ steps.login-ecr.outputs.registry }}/${{ inputs.appName }}:latest
           dockerfile: Containerfile
