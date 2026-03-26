@@ -68,7 +68,7 @@ jobs:
           persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of REPO_ACCESS_TOKEN
           fetch-depth: 0 # otherwise, there would be errors pushing refs to the destination repository
       - name: Use Node.js with Github Packages as registry url
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ inputs.nodeVersion }}
           registry-url: https://npm.pkg.github.com
@@ -118,7 +118,7 @@ jobs:
           NPM_GITHUB_TOKEN: ${{ secrets.githubAuthToken }} # To support configurations from .npmrc
       - if: inputs.access == 'public'
         name: Use Node.js with NPMjs as registry url
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ inputs.nodeVersion }}
           registry-url: https://registry.npmjs.org
