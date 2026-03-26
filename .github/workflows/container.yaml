@@ -91,7 +91,7 @@ jobs:
           fi
       - name: Login to base image registry
         if: ${{ inputs.baseImageRegistry }}
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ inputs.baseImageRegistry }}
           username: ${{ secrets.baseImageRegistryUsername }}
