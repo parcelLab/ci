@@ -62,7 +62,7 @@ jobs:
           NPM_GITHUB_TOKEN: ${{ secrets.npmGithubReadToken }}
       - if: inputs.artifactPath != '' && inputs.artifactName != ''
         name: Download artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.artifactName }}
           path: ${{ inputs.artifactPath }}
@@ -149,7 +149,7 @@ jobs:
           NPM_GITHUB_TOKEN: ${{ secrets.npmGithubReadToken }}
       - if: inputs.artifactPath != '' && inputs.artifactName != ''
         name: Download artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.artifactName }}
           path: ${{ inputs.artifactPath }}
