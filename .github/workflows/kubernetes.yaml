@@ -263,7 +263,7 @@ jobs:
           version: ${{ needs.initialize.outputs.version }}
         continue-on-error: true
       - name: Clean up images
-        uses: actions/delete-package-versions@v4
+        uses: actions/delete-package-versions@v5
         with:
           package-name: ${{ github.event.deployment.payload.name }}
           package-type: container
