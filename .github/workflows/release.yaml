@@ -74,7 +74,7 @@ jobs:
           publish: ${{ inputs.publish }}
           prerelease: ${{ inputs.prerelease }}
           prerelease-identifier: ${{ inputs.prerelease-identifier }}
-          disable-releaser: ${{ inputs.disable-releaser }}
+          dry-run: ${{ inputs.disable-releaser }}
           latest: ${{ inputs.latest }}
           commitish: ${{ inputs.commitish }}
           header: ${{ inputs.header }}
