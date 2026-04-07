@@ -65,7 +65,7 @@ jobs:
     runs-on: ${{ inputs.runner }}
     steps:
       - name: Create/Update Release Draft
-        uses: release-drafter/release-drafter@v6
+        uses: release-drafter/release-drafter@v7
         with:
           config-name: "release-drafter.yml"
           name: ${{ inputs.name }}
