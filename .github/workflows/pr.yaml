@@ -25,7 +25,7 @@ jobs:
     steps:
       - name: Label PR based on pushed file paths
         continue-on-error: true
-        uses: actions/labeler@v4
+        uses: actions/labeler@v6
         with:
           repo-token: ${{ secrets.repoAccessToken }}
           configuration-path: ${{ inputs.labelerConfig }}
