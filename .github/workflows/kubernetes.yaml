@@ -144,10 +144,10 @@ on:
         type: string
     secrets:
       npmGithubReadToken:
-        required: true
+        required: false
         description: The Github token with permissions to read NPM private packages
       repoAccessToken:
-        required: true
+        required: false
         description: The Github token to perform operations cross-repo (not github.token!)
       slackBotToken:
         required: false
@@ -156,7 +156,7 @@ on:
         required: false
         description: Authentication token for Sentry
       AWS_ROLE_TO_ASSUME:
-        required: true
+        required: false
         description: AWS OIDC role for GitHub to assume
 
 jobs:
