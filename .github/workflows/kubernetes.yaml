@@ -34,7 +34,12 @@ on:
         type: string
       imageTargets:
         required: false
-        description: If provided, sets targets for as many image builds as targets specified
+        description: If provided, sets targets for as many image builds as targets specified. When bakeFile is provided, these are Docker Buildx Bake targets.
+        default: ""
+        type: string
+      bakeFile:
+        required: false
+        description: If provided, builds the imageTargets with Docker Buildx Bake instead of docker/build-push-action.
         default: ""
         type: string
       preScript:
@@ -166,6 +171,7 @@ jobs:
     with:
       artifactName: ${{ inputs.artifactName }}
       artifactPath: ${{ inputs.artifactPath }}
+      bakeFile: ${{ inputs.bakeFile }}
       imageTargets: ${{ inputs.imageTargets }}
       preScript: ${{ inputs.preScript }}
       enableContainerScan: ${{ inputs.enableContainerScan }}
