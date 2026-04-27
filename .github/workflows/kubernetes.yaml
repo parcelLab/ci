@@ -224,7 +224,9 @@ jobs:
       env: ${{ github.event.deployment.payload.env || inputs.env }}
       containerContext: ${{ github.event.deployment.payload.container.context || inputs.containerContext }}
       containerFile: ${{ github.event.deployment.payload.container.file || inputs.containerFile }}
-    secrets: inherit
+    secrets:
+      npmGithubReadToken: ${{ secrets.npmGithubReadToken }}
+      AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME }}
 
   commit:
     needs: [initialize, build]
