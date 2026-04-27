@@ -34,7 +34,12 @@ on:
         type: string
       imageTargets:
         required: false
-        description: If provided, sets targets for as many image builds as targets specified
+        description: If provided, sets targets for as many image builds as targets specified. When bakeFile is provided, these are Docker Buildx Bake targets.
+        default: ""
+        type: string
+      bakeFile:
+        required: false
+        description: If provided, builds the imageTargets with Docker Buildx Bake instead of docker/build-push-action.
         default: ""
         type: string
       preScript:
@@ -97,12 +102,52 @@ on:
         description: The relative file path to the folder that holds the application Kubernetes values
         default: values.yaml
         type: string
+      appName:
+        required: false
+        description: Application name fallback for non-deployment validation runs
+        default: ""
+        type: string
+      env:
+        required: false
+        description: Environment fallback for non-deployment validation runs
+        default: test
+        type: string
+      ref:
+        required: false
+        description: Git ref fallback for non-deployment validation runs
+        default: ""
+        type: string
+      sha:
+        required: false
+        description: Git SHA fallback for non-deployment validation runs
+        default: ""
+        type: string
+      versionKey:
+        required: false
+        description: Values key fallback for non-deployment validation runs
+        default: ""
+        type: string
+      pushToEnvTag:
+        required: false
+        description: Whether to push the env tag in the GitOps commit step
+        default: false
+        type: boolean
+      containerContext:
+        required: false
+        description: Container context fallback for non-deployment validation runs
+        default: .
+        type: string
+      containerFile:
+        required: false
+        description: Container file fallback for non-deployment validation runs
+        default: Containerfile
+        type: string
     secrets:
       npmGithubReadToken:
-        required: true
+        required: false
         description: The Github token with permissions to read NPM private packages
       repoAccessToken:
-        required: true
+        required: false
         description: The Github token to perform operations cross-repo (not github.token!)
       slackBotToken:
         required: false
@@ -111,12 +156,12 @@ on:
         required: false
         description: Authentication token for Sentry
       AWS_ROLE_TO_ASSUME:
-        required: true
+        required: false
         description: AWS OIDC role for GitHub to assume
 
 jobs:
   initialize:
-    environment: ${{ github.event.deployment.payload.env }}
+    environment: ${{ github.event.deployment.payload.env || inputs.env }}
     runs-on: ${{ inputs.runner }}
     outputs:
       channel-id: ${{ steps.vars.outputs.channel-id }}
@@ -124,22 +169,24 @@ jobs:
     steps:
       - name: Check if 'env' input is provided
         run: |
-          if [ -z "${{ github.event.deployment.payload.env }}" ]; then
+          DEPLOY_ENV="${{ github.event.deployment.payload.env || inputs.env }}"
+          if [ -z "$DEPLOY_ENV" ]; then
             echo "ERROR: 'env' input is missing or empty!"
             exit 1
           fi
       - name: Load deployment variables
         id: vars
         run: |
-          REF="${{ github.event.deployment.ref }}"
-          SHA="${{ github.event.deployment.sha }}"
-          if [[ "${{ github.event.deployment.payload.env }}" == 'prod' ]]
+          REF="${{ github.event.deployment.ref || inputs.ref }}"
+          SHA="${{ github.event.deployment.sha || inputs.sha || github.sha }}"
+          DEPLOY_ENV="${{ github.event.deployment.payload.env || inputs.env }}"
+          if [[ "$DEPLOY_ENV" == 'prod' ]]
           then
             # shellcheck disable=SC2086
             echo "version=${REF##*/}" >> $GITHUB_OUTPUT
             # shellcheck disable=SC2086
             echo "channel-id=${{ inputs.slackChannelProd }}" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.event.deployment.payload.env }}" == 'test' ]]
+          elif [[ "$DEPLOY_ENV" == 'test' ]]
           then
             # shellcheck disable=SC2086
             echo "version=${SHA:0:7}" >> $GITHUB_OUTPUT
@@ -151,7 +198,8 @@ jobs:
             # shellcheck disable=SC2086
             echo "channel-id=${{ inputs.slackChannelStaging }}" >> $GITHUB_OUTPUT
           fi
-      - name: Start ${{ github.event.deployment.payload.name }} deployment
+      - name: Start ${{ github.event.deployment.payload.name || inputs.appName }} deployment
+        if: github.event_name == 'deployment'
         uses: chrnorm/deployment-status@v2
         with:
           deployment-id: ${{ github.event.deployment.id }}
@@ -162,20 +210,27 @@ jobs:
 
   build:
     needs: [initialize]
-    uses: parcelLab/ci/.github/workflows/build-image.yaml@v8
+    uses: parcelLab/ci/.github/workflows/build-image.yaml@ac31230f866628762809412e5de956a7ac5c9515
     with:
       artifactName: ${{ inputs.artifactName }}
       artifactPath: ${{ inputs.artifactPath }}
+      bakeFile: ${{ inputs.bakeFile }}
       imageTargets: ${{ inputs.imageTargets }}
       preScript: ${{ inputs.preScript }}
       enableContainerScan: ${{ inputs.enableContainerScan }}
       runner: ${{ inputs.runner }}
       version: ${{ needs.initialize.outputs.version }}
-    secrets: inherit
+      appName: ${{ github.event.deployment.payload.name || inputs.appName }}
+      env: ${{ github.event.deployment.payload.env || inputs.env }}
+      containerContext: ${{ github.event.deployment.payload.container.context || inputs.containerContext }}
+      containerFile: ${{ github.event.deployment.payload.container.file || inputs.containerFile }}
+    secrets:
+      npmGithubReadToken: ${{ secrets.npmGithubReadToken }}
+      AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME }}
 
   commit:
     needs: [initialize, build]
-    environment: ${{ github.event.deployment.payload.env }}
+    environment: ${{ github.event.deployment.payload.env || inputs.env }}
     concurrency: commit-${{ inputs.deploymentRepoURL }}-${{ github.sha }}
     runs-on: ${{ inputs.runner }}
     steps:
@@ -186,10 +241,10 @@ jobs:
           path: remote
           token: ${{ secrets.repoAccessToken }}
           ref: main
-      - name: Deploy ${{ github.sha }} to ${{ github.event.deployment.environment }} values
+      - name: Deploy ${{ github.sha }} to ${{ github.event.deployment.environment || inputs.env }} values
         uses: mikefarah/yq@v4.52.5
         with:
-          cmd: yq '(.${{ github.event.deployment.payload.kubernetes.versionKey }} = "${{ needs.initialize.outputs.version }}")' -i remote/${{ inputs.deploymentRepoPath }}/values.yaml
+          cmd: yq '(.${{ github.event.deployment.payload.kubernetes.versionKey || inputs.versionKey }} = "${{ needs.initialize.outputs.version }}")' -i remote/${{ inputs.deploymentRepoPath }}/values.yaml
       - name: Commit and push new image tag
         run: |
           set -euxo pipefail
@@ -209,11 +264,11 @@ jobs:
         env:
           GIT_USER_EMAIL: dev.bot@parcellab.com
           GIT_USER_NAME: parcellab-dev-bot
-          ENV: ${{ github.event.deployment.payload.env }}
+          ENV: ${{ github.event.deployment.payload.env || inputs.env }}
           VERSION: ${{ needs.initialize.outputs.version }}
-          PUSH_TO_ENV_TAG: ${{ github.event.deployment.payload.pushToEnvTag }}
-      - if: success()
-        name: Successful ${{ github.event.deployment.payload.name }} deployment
+          PUSH_TO_ENV_TAG: ${{ github.event.deployment.payload.pushToEnvTag || inputs.pushToEnvTag }}
+      - if: success() && github.event_name == 'deployment'
+        name: Successful ${{ github.event.deployment.payload.name || inputs.appName }} deployment
         uses: chrnorm/deployment-status@v2
         with:
           deployment-id: ${{ github.event.deployment.id }}
@@ -221,8 +276,8 @@ jobs:
           environment: ${{ github.event.deployment.payload.env }}
           state: "success"
           token: ${{ github.token }}
-      - if: failure()
-        name: Failed ${{ github.event.deployment.payload.name }} deployment
+      - if: failure() && github.event_name == 'deployment'
+        name: Failed ${{ github.event.deployment.payload.name || inputs.appName }} deployment
         uses: chrnorm/deployment-status@v2
         with:
           deployment-id: ${{ github.event.deployment.id }}
@@ -230,8 +285,8 @@ jobs:
           environment: ${{ github.event.deployment.payload.env }}
           state: "failure"
           token: ${{ github.token }}
-      - if: success() && needs.initialize.outputs.channel-id != ''
-        name: Notify ${{ github.event.deployment.payload.name }} deployment success
+      - if: success() && github.event_name == 'deployment' && needs.initialize.outputs.channel-id != ''
+        name: Notify ${{ github.event.deployment.payload.name || inputs.appName }} deployment success
         continue-on-error: true
         uses: darioblanco/slack-deployment@main
         env:
@@ -258,14 +313,14 @@ jobs:
           SENTRY_PROJECT: ${{ inputs.sentryProject }}
           SENTRY_URL: ${{ inputs.sentryUrl }}
         with:
-          environment: ${{ inputs.sentryEnvironment != '' && inputs.sentryEnvironment || github.event.deployment.payload.env }}
+          environment: ${{ inputs.sentryEnvironment != '' && inputs.sentryEnvironment || github.event.deployment.payload.env || inputs.env }}
           set_commits: skip
           version: ${{ needs.initialize.outputs.version }}
         continue-on-error: true
       - name: Clean up images
         uses: actions/delete-package-versions@v5
         with:
-          package-name: ${{ github.event.deployment.payload.name }}
+          package-name: ${{ github.event.deployment.payload.name || inputs.appName }}
           package-type: container
           min-versions-to-keep: "500"
           token: ${{ secrets.repoAccessToken }}
