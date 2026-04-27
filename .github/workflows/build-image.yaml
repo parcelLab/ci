@@ -254,9 +254,6 @@ jobs:
       contents: read
     environment: ${{ github.event.deployment.payload.env || inputs.env }}
     runs-on: ${{ inputs.runner }}
-    strategy:
-      matrix:
-        bake_targets: ${{ fromJson(inputs.imageTargets) }}
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v4
@@ -280,59 +277,64 @@ jobs:
         with:
           aws-region: eu-central-1
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-      - name: Create ${{ matrix.bake_targets }} ECR repository if it doesn't exist
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build images with Docker Bake
+        env:
+          APP_NAME: ${{ github.event.deployment.payload.name || inputs.appName }}
+          BAKE_FILE: ${{ inputs.bakeFile }}
+          ENVIRONMENT: ${{ github.event.deployment.payload.env || inputs.env }}
+          GITHUB_SHA: ${{ github.sha }}
+          IMAGE_TARGETS: ${{ inputs.imageTargets }}
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          NPM_GITHUB_TOKEN: ${{ secrets.npmGithubReadToken }}
+          VERSION: ${{ inputs.version }}
         run: |
-          if ! aws ecr describe-repositories --repository-names ${{ github.event.deployment.payload.name || inputs.appName }}-${{ matrix.bake_targets.imageTarget || matrix.bake_targets.target || matrix.bake_targets }} 2>/dev/null; then
-            echo "Repository ${{ github.event.deployment.payload.name || inputs.appName }}-${{ matrix.bake_targets.imageTarget || matrix.bake_targets.target || matrix.bake_targets }} does not exist, creating it..."
-            aws ecr create-repository --repository-name ${{ github.event.deployment.payload.name || inputs.appName }}-${{ matrix.bake_targets.imageTarget || matrix.bake_targets.target || matrix.bake_targets }}
-            echo "Setting lifecycle policy..."
-          else
-            echo "Repository ${{ github.event.deployment.payload.name || inputs.appName }}-${{ matrix.bake_targets.imageTarget || matrix.bake_targets.target || matrix.bake_targets }} already exists, skipping creation"
+          set -euo pipefail
+          if [ -z "$IMAGE_TARGETS" ]; then
+            echo "ERROR: imageTargets is required when bakeFile is provided"
+            exit 1
           fi
 
-          echo "Applying lifecycle policies"
           LIFECYCLE_POLICY='{"rules":[
               {"rulePriority":1,"description":"Preserve preview images","selection":{"tagStatus":"tagged","tagPatternList":["preview-*"],"countType":"sinceImagePushed","countUnit":"days","countNumber":365},"action":{"type":"expire"}},
               {"rulePriority":2,"description":"Preserve production images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}},
               {"rulePriority":3,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
             ]}'
-          aws ecr put-lifecycle-policy --repository-name ${{ github.event.deployment.payload.name || inputs.appName }}-${{ matrix.bake_targets.imageTarget || matrix.bake_targets.target || matrix.bake_targets }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-      - name: Build ${{ matrix.bake_targets.target || matrix.bake_targets }} image with Docker Bake
-        env:
-          APP_NAME: ${{ github.event.deployment.payload.name || inputs.appName }}
-          BAKE_FILE: ${{ inputs.bakeFile }}
-          BAKE_TARGET: ${{ matrix.bake_targets.target || matrix.bake_targets }}
-          ENVIRONMENT: ${{ github.event.deployment.payload.env || inputs.env }}
-          GITHUB_SHA: ${{ github.sha }}
-          IMAGE_REPOSITORY: ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}-${{ matrix.bake_targets.imageTarget || matrix.bake_targets.target || matrix.bake_targets }}
-          NPM_GITHUB_TOKEN: ${{ secrets.npmGithubReadToken }}
-          VERSION: ${{ inputs.version }}
-        run: |
-          set -euo pipefail
-          docker buildx bake \
-            -f "$BAKE_FILE" \
-            --push \
-            --set "$BAKE_TARGET.args.APP_NAME=$APP_NAME" \
-            --set "$BAKE_TARGET.args.ENVIRONMENT=$ENVIRONMENT" \
-            --set "$BAKE_TARGET.args.GITHUB_SHA=$GITHUB_SHA" \
-            --set "$BAKE_TARGET.args.NPM_GITHUB_TOKEN=$NPM_GITHUB_TOKEN" \
-            --set "$BAKE_TARGET.args.VERSION=$VERSION" \
-            --set "$BAKE_TARGET.cache-from=type=registry,ref=$IMAGE_REPOSITORY:cache" \
-            --set "$BAKE_TARGET.cache-to=mode=max,image-manifest=true,oci-mediatypes=true,type=registry,ref=$IMAGE_REPOSITORY:cache" \
-            --set "$BAKE_TARGET.tags=$IMAGE_REPOSITORY:latest" \
-            --set "$BAKE_TARGET.tags=$IMAGE_REPOSITORY:$VERSION" \
-            --set "$BAKE_TARGET.tags=$IMAGE_REPOSITORY:$GITHUB_SHA" \
-            "$BAKE_TARGET"
-      - name: Scan for vulnerabilities
-        if: inputs.enableContainerScan
-        uses: crazy-max/ghaction-container-scan@v4
-        with:
-          image: ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}-${{ matrix.bake_targets.imageTarget || matrix.bake_targets.target || matrix.bake_targets }}:latest
-          severity: ${{ env.IMAGE_SCAN_SEVERITY }}
-          severity_threshold: ${{ env.IMAGE_SCAN_SEVERITY_THRESHOLD }}
-          annotations: ${{ env.IMAGE_SCAN_ANNOTATIONS }}
-        env:
-          TRIVY_TIMEOUT: ${{ env.IMAGE_SCAN_TRIVY_TIMEOUT }}
+
+          mapfile -t TARGET_CONFIGS < <(jq -c '.[]' <<< "$IMAGE_TARGETS")
+          BAKE_ARGS=(-f "$BAKE_FILE" --push)
+          BAKE_TARGETS=()
+
+          for target_config in "${TARGET_CONFIGS[@]}"; do
+            bake_target=$(jq -r 'if type == "object" then .target else . end' <<< "$target_config")
+            image_target=$(jq -r 'if type == "object" then (.imageTarget // .target) else . end' <<< "$target_config")
+            image_repository="$REGISTRY/$APP_NAME-$image_target"
+
+            if ! aws ecr describe-repositories --repository-names "$APP_NAME-$image_target" 2>/dev/null; then
+              echo "Repository $APP_NAME-$image_target does not exist, creating it..."
+              aws ecr create-repository --repository-name "$APP_NAME-$image_target"
+            else
+              echo "Repository $APP_NAME-$image_target already exists, skipping creation"
+            fi
+
+            echo "Applying lifecycle policy for $APP_NAME-$image_target"
+            aws ecr put-lifecycle-policy --repository-name "$APP_NAME-$image_target" --lifecycle-policy-text "$LIFECYCLE_POLICY"
+
+            BAKE_ARGS+=(
+              --set "$bake_target.args.APP_NAME=$APP_NAME"
+              --set "$bake_target.args.ENVIRONMENT=$ENVIRONMENT"
+              --set "$bake_target.args.GITHUB_SHA=$GITHUB_SHA"
+              --set "$bake_target.args.NPM_GITHUB_TOKEN=$NPM_GITHUB_TOKEN"
+              --set "$bake_target.args.VERSION=$VERSION"
+              --set "$bake_target.cache-from=type=registry,ref=$image_repository:cache"
+              --set "$bake_target.cache-to=mode=max,image-manifest=true,oci-mediatypes=true,type=registry,ref=$image_repository:cache"
+              --set "$bake_target.tags=$image_repository:latest"
+              --set "$bake_target.tags=$image_repository:$VERSION"
+              --set "$bake_target.tags=$image_repository:$GITHUB_SHA"
+            )
+            BAKE_TARGETS+=("$bake_target")
+          done
+
+          docker buildx bake "${BAKE_ARGS[@]}" "${BAKE_TARGETS[@]}"
