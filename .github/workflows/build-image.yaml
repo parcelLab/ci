@@ -14,7 +14,7 @@ on:
         type: string
       imageTargets:
         required: false
-        description: If provided, sets targets for as many image builds as targets specified. When bakeFile is provided, these are Docker Buildx Bake targets.
+        description: If provided, must be a JSON array string of target names to build (for example, ["app","worker"]). When bakeFile is provided, these values are Docker Buildx Bake targets.
         default: ""
         type: string
       bakeFile:
