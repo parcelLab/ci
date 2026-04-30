@@ -3,7 +3,13 @@ on:
   push:
     branches:
       - "**"
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      runner:
+        required: false
+        description: Runner type
+        default: ubuntu-latest
+        type: string
 jobs:
   ci_checks:
     runs-on: ubuntu-latest
