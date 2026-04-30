@@ -1,0 +1,76 @@
+name: CI Requirement Checks
+on:
+  push:
+    branches:
+      - "**"
+  workflow_call:
+    inputs:
+      runner:
+        required: false
+        description: Runner type
+        default: ubuntu-latest
+        type: string
+jobs:
+  requirements:
+    runs-on: ubuntu-latest
+    outputs:
+      full_run_required: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.check_full_run_required.outputs.full_run_required }}
+      test_run_required: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.check_test_run_required.outputs.test_run_required }}
+    steps:
+      - uses: actions/checkout@v6
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        with:
+          fetch-depth: 0
+
+      - name: Check full pipeline run required
+        id: check_full_run_required
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        uses: dorny/paths-filter@v4
+        with:
+          predicate-quantifier: "every"
+          filters: |
+            full_run_required:
+              - "**"
+              - "!.chart/**"
+              - "!.github/**"
+
+      - name: Check tests run required
+        id: check_test_run_required
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        uses: dorny/paths-filter@v4
+        with:
+          predicate-quantifier: "some"
+          filters: |
+            test_run_required:
+              # Python / Django
+              - "**.py"
+              - "requirements*.txt"
+              - "pyproject.toml"
+              - "setup.cfg"
+              - "Pipfile"
+              - "Pipfile.lock"
+              - "poetry.lock"
+              - "uv.lock"
+              - "tox.ini"
+              - "pytest.ini"
+              - "**.html"
+              - "templates/**"
+              # JavaScript / TypeScript
+              - "**.js"
+              - "**.jsx"
+              - "**.ts"
+              - "**.tsx"
+              - "**.mjs"
+              - "**.cjs"
+              - "**.vue"
+              - "**.svelte"
+              - "package.json"
+              - "package-lock.json"
+              - "yarn.lock"
+              - "pnpm-lock.yaml"
+              - "tsconfig*.json"
+              - "jest.config.*"
+              - "vitest.config.*"
+              - "babel.config.*"
+              - "vite.config.*"
+              - "webpack.config.*"
