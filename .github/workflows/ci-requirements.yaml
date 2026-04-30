@@ -10,6 +10,13 @@ on:
         description: Runner type
         default: ubuntu-latest
         type: string
+    outputs:
+      full_run_required:
+        description: Whether a full pipeline run is required
+        value: ${{ jobs.requirements.outputs.full_run_required }}
+      test_run_required:
+        description: Whether a test run is required
+        value: ${{ jobs.requirements.outputs.test_run_required }}
 jobs:
   requirements:
     runs-on: ubuntu-latest
