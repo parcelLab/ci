@@ -24,4 +24,4 @@ jobs:
       - name: Run actionlint
         run: /home/runner/go/bin/actionlint
   yamllint:
-    uses: parcelLab/ci/.github/workflows/yaml.yaml@v8
+    uses: parcelLab/ci/.github/workflows/yaml.yaml@v8.3.5
