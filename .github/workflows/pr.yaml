@@ -25,8 +25,15 @@ jobs:
     steps:
       # - name: Checkout
       #   uses: actions/checkout@v4
-      - name: ls
-        run: ls -lah .github/
+      - name: debug
+        run: |
+          pwd
+          ls -lah
+          ls -lah ../../.github/
+          ls -lah ../../../.github/
+          cat ../../../.github/labeler.yaml
+          cat ../../.github/labeler.yaml
+          cat .github/labeler.yaml
       - name: Label PR based on pushed file paths
         continue-on-error: true
         uses: actions/labeler@v6
