@@ -19,22 +19,20 @@ on:
         value: ${{ jobs.requirements.outputs.test_run_required }}
 jobs:
   requirements:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     outputs:
-      full_run_required: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.check_full_run_required.outputs.full_run_required }}
-      test_run_required: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.check_test_run_required.outputs.test_run_required }}
+      full_run_required: ${{ steps.check_full_run_required.outputs.full_run_required }}
+      test_run_required: ${{ steps.check_test_run_required.outputs.test_run_required }}
     steps:
-      - uses: actions/checkout@v6
-        if: ${{ github.event_name != 'workflow_dispatch' }}
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Check full pipeline run required
         id: check_full_run_required
-        if: ${{ github.event_name != 'workflow_dispatch' }}
         uses: dorny/paths-filter@v4
         with:
-          predicate-quantifier: "every"
+          predicate-quantifier: "some"
           filters: |
             full_run_required:
               - "**"
@@ -43,7 +41,6 @@ jobs:
 
       - name: Check tests run required
         id: check_test_run_required
-        if: ${{ github.event_name != 'workflow_dispatch' }}
         uses: dorny/paths-filter@v4
         with:
           predicate-quantifier: "some"
