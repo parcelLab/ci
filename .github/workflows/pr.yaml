@@ -29,11 +29,8 @@ jobs:
         run: |
           pwd
           ls -lah
-          ls -lah ../../.github/
-          ls -lah ../../../.github/
-          cat ../../../.github/labeler.yaml
-          cat ../../.github/labeler.yaml
-          cat .github/labeler.yaml
+          ls -lah ../.github/
+          cat ../.github/labeler.yaml
       - name: Label PR based on pushed file paths
         continue-on-error: true
         uses: actions/labeler@v6
