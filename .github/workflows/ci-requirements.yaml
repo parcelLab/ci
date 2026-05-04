@@ -21,7 +21,7 @@ jobs:
   requirements:
     runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     outputs:
-      full_run_required: ${{ steps.check_full_run_required.outputs.full_run_required }}
+      full_run_required: ${{ steps.check_full_run_required.outputs.config_changes_only != 'true' }}
       test_run_required: ${{ steps.check_test_run_required.outputs.test_run_required }}
     steps:
       - uses: actions/checkout@v4
@@ -32,12 +32,11 @@ jobs:
         id: check_full_run_required
         uses: dorny/paths-filter@v4
         with:
-          predicate-quantifier: "some"
+          predicate-quantifier: "every"
           filters: |
-            full_run_required:
-              - "**"
-              - "!.chart/**"
-              - "!.github/**"
+            config_changes_only:
+              - ".chart/**"
+              - ".github/**"
 
       - name: Check tests run required
         id: check_test_run_required
