@@ -235,7 +235,7 @@ jobs:
     runs-on: ${{ inputs.runner }}
     steps:
       - name: Checkout ${{ inputs.deploymentRepoURL }} git repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
         with:
           repository: ${{ inputs.deploymentRepoURL }}
           path: remote
