@@ -97,7 +97,7 @@ jobs:
         name: Run build
         run: npm run build
       - name: Update package.json version to ${{ inputs.version }}
-        uses: mikefarah/yq@v4.52.5
+        uses: mikefarah/yq@v4.53.2
         with:
           cmd: |
             yq e '.version = "${{ inputs.version }}"' -i package.json -j
