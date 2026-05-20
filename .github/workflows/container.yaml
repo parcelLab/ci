@@ -81,7 +81,7 @@ jobs:
     runs-on: ${{ inputs.runner }}
     steps:
       - name: Checkout current git repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Validate base image registry secrets
         if: ${{ inputs.baseImageRegistry }}
         run: |
