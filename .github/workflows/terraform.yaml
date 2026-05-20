@@ -23,7 +23,7 @@ jobs:
       - name: Checkout current git repository
         uses: actions/checkout@v6
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@v4
         with:
           cli_config_credentials_token: ${{ secrets.tfApiToken }}
       - name: Terraform Format
