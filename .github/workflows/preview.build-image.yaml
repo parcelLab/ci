@@ -25,6 +25,11 @@ on:
         description: If provided, downloads a previously uploaded artifact (has to be in the same workflow). Both artifactPath and artifactName have to be passed.
         default: ""
         type: string
+      timeoutMinutes:
+        required: false
+        description: Maximum minutes before the job is cancelled
+        default: 40
+        type: number
     secrets:
       AWS_ROLE_TO_ASSUME:
         required: true
@@ -36,6 +41,7 @@ jobs:
       id-token: write
       contents: read
     runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeoutMinutes }}
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v6
@@ -86,6 +92,7 @@ jobs:
   comment-pr:
     if: ${{ inputs.GHA_TRIGGER_EVENT != 'synchronize' }}
     runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeoutMinutes }}
     steps:
       - name: Comment PR
         uses: thollander/actions-comment-pull-request@v3

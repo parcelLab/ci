@@ -7,6 +7,11 @@ on:
         description: The name of the application
         required: true
         type: string
+      timeoutMinutes:
+        required: false
+        description: Maximum minutes before the job is cancelled
+        default: 40
+        type: number
     secrets:
       AWS_ROLE_TO_ASSUME:
         required: true
@@ -18,6 +23,7 @@ jobs:
       id-token: write
       contents: read
     runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeoutMinutes }}
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6

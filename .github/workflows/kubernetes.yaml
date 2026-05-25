@@ -62,6 +62,11 @@ on:
         description: Runner type
         default: ubuntu-latest
         type: string
+      timeoutMinutes:
+        required: false
+        description: Maximum minutes before the job is cancelled
+        default: 40
+        type: number
       sentryOrg:
         required: false
         description: The Sentry organization that will hold the deployment
@@ -163,6 +168,7 @@ jobs:
   initialize:
     environment: ${{ github.event.deployment.payload.env || inputs.env }}
     runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeoutMinutes }}
     outputs:
       channel-id: ${{ steps.vars.outputs.channel-id }}
       version: ${{ steps.vars.outputs.version }}
@@ -219,6 +225,7 @@ jobs:
       preScript: ${{ inputs.preScript }}
       enableContainerScan: ${{ inputs.enableContainerScan }}
       runner: ${{ inputs.runner }}
+      timeoutMinutes: ${{ inputs.timeoutMinutes }}
       version: ${{ needs.initialize.outputs.version }}
       appName: ${{ github.event.deployment.payload.name || inputs.appName }}
       env: ${{ github.event.deployment.payload.env || inputs.env }}
@@ -233,6 +240,7 @@ jobs:
     environment: ${{ github.event.deployment.payload.env || inputs.env }}
     concurrency: commit-${{ inputs.deploymentRepoURL }}-${{ github.sha }}
     runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeoutMinutes }}
     steps:
       - name: Checkout ${{ inputs.deploymentRepoURL }} git repository
         uses: actions/checkout@v6

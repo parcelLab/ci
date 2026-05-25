@@ -10,6 +10,11 @@ on:
         description: Runner type
         default: ubuntu-latest
         type: string
+      timeoutMinutes:
+        required: false
+        description: Maximum minutes before the job is cancelled
+        default: 40
+        type: number
     outputs:
       full_run_required:
         description: Whether a full pipeline run is required
@@ -20,6 +25,7 @@ on:
 jobs:
   requirements:
     runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
+    timeout-minutes: ${{ inputs.timeoutMinutes || 40 }}
     outputs:
       full_run_required: ${{ steps.check_full_run_required.outputs.full_run_required }}
       test_run_required: ${{ steps.check_test_run_required.outputs.test_run_required }}
