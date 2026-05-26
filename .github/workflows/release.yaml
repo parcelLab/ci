@@ -7,6 +7,11 @@ on:
         description: Runner type
         default: ubuntu-latest
         type: string
+      timeoutMinutes:
+        required: false
+        description: Maximum minutes before the job is cancelled
+        default: 40
+        type: number
       configName:
         required: false
         description: The path within the .github/ folder for the release drafter configuration
@@ -63,6 +68,7 @@ on:
 jobs:
   release:
     runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeoutMinutes }}
     steps:
       - name: Create/Update Release Draft
         uses: release-drafter/release-drafter@v7

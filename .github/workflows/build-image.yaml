@@ -37,6 +37,11 @@ on:
         description: Runner type
         default: ubuntu-latest
         type: string
+      timeoutMinutes:
+        required: false
+        description: Maximum minutes before the job is cancelled
+        default: 40
+        type: number
       version:
         required: true
         type: string
@@ -82,6 +87,7 @@ jobs:
       contents: read
     environment: ${{ github.event.deployment.payload.env || inputs.env }}
     runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeoutMinutes }}
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v6
@@ -166,6 +172,7 @@ jobs:
       contents: read
     environment: ${{ github.event.deployment.payload.env || inputs.env }}
     runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeoutMinutes }}
     strategy:
       matrix:
         containerfile_targets: ${{ fromJson(inputs.imageTargets) }}
@@ -254,6 +261,7 @@ jobs:
       contents: read
     environment: ${{ github.event.deployment.payload.env || inputs.env }}
     runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeoutMinutes }}
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v6

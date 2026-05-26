@@ -27,6 +27,11 @@ on:
         description: Runner type
         default: ubuntu-latest
         type: string
+      timeoutMinutes:
+        required: false
+        description: Maximum minutes before the job is cancelled
+        default: 40
+        type: number
     secrets:
       repoAccessToken:
         required: true
@@ -35,6 +40,7 @@ jobs:
   jekyll:
     if: github.ref == 'refs/heads/${{ inputs.defaultBranch }}'
     runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeoutMinutes }}
     steps:
       - name: Load workflow variables
         id: vars

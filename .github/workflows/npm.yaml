@@ -42,6 +42,11 @@ on:
         description: Runner type
         default: ubuntu-latest
         type: string
+      timeoutMinutes:
+        required: false
+        description: Maximum minutes before the job is cancelled
+        default: 40
+        type: number
       scope:
         required: false
         description: The npm organization (defaults to @parcellab)
@@ -61,6 +66,7 @@ on:
 jobs:
   npm-publish:
     runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeoutMinutes }}
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v6

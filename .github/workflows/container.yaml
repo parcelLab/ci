@@ -55,6 +55,11 @@ on:
         description: Runner type
         default: ubuntu-latest
         type: string
+      timeoutMinutes:
+        required: false
+        description: Maximum minutes before the job is cancelled
+        default: 40
+        type: number
       version:
         required: true
         description: The version to push
@@ -79,6 +84,7 @@ jobs:
       id-token: write
       contents: read
     runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeoutMinutes }}
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v6

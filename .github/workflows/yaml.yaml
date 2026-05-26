@@ -7,6 +7,11 @@ on:
         description: Runner type
         default: ubuntu-latest
         type: string
+      timeoutMinutes:
+        required: false
+        description: Maximum minutes before the job is cancelled
+        default: 40
+        type: number
       additional_args:
         required: false
         description: List of yaml files to exclude
@@ -14,6 +19,7 @@ on:
 jobs:
   yaml:
     runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeoutMinutes }}
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v6
