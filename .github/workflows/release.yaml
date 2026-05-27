@@ -71,7 +71,7 @@ jobs:
     timeout-minutes: ${{ inputs.timeoutMinutes }}
     steps:
       - name: Create/Update Release Draft
-        uses: release-drafter/release-drafter@v7
+        uses: release-drafter/release-drafter@v7.3.0
         with:
           config-name: "release-drafter.yml"
           name: ${{ inputs.name }}
