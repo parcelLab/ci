@@ -132,7 +132,7 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
       - name: Build image
-        uses: docker/build-push-action@v7.1.0
+        uses: docker/build-push-action@v7.2.0
         with:
           build-args: |
             GITHUB_SHA=${{ github.sha }}
@@ -220,7 +220,7 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
       - name: Build ${{ matrix.containerfile_targets }} image
-        uses: docker/build-push-action@v7.1.0
+        uses: docker/build-push-action@v7.2.0
         with:
           build-args: |
             GITHUB_SHA=${{ github.sha }}
