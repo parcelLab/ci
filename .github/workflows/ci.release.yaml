@@ -9,6 +9,6 @@ on:
 
 jobs:
   release:
-    uses: parcelLab/ci/.github/workflows/release.yaml@v8
+    uses: parcelLab/ci/.github/workflows/release.yaml@v8.3.7
     secrets:
       repoAccessToken: ${{ secrets.REPO_ACCESS_TOKEN_OPEN_SOURCE }}
