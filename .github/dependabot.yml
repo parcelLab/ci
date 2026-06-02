@@ -19,4 +19,5 @@ updates:
     ignore:
       # This tells Dependabot to ignore patch and minor bumps for all GHA dependencies, so it won't try to pin v8.3.7 — only major version bumps (e.g. v8 → v9) would trigger a PR
       - dependency-name: "*"
-        update-types: ["version-update:semver-patch", "version-update:semver-minor"]
+        update-types:
+          ["version-update:semver-patch", "version-update:semver-minor"]
