@@ -108,7 +108,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: eu-central-1
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
       - name: Create ECR repository if it doesn't exist
         run: |
           aws ecr describe-repositories --repository-names ${{ inputs.appName }} || \
