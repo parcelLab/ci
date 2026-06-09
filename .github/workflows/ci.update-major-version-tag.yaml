@@ -1,8 +1,18 @@
 name: Update major tag
 on:
-  release:
-    types:
-      - published
+  # Fire when the semver tag itself is created (i.e. on publish). A draft
+  # release does not create its git tag, so this never runs for drafts, and it
+  # is immune to the GITHUB_TOKEN anti-recursion that can swallow the
+  # `release: published` event (see v8.3.8, which left v8 a release behind).
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+  # Manual recovery lever to realign the major tag to a specific version.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Semver tag to align the major tag to (e.g. v8.3.8)"
+        required: true
 
 jobs:
   update-major-tag:
@@ -15,10 +25,11 @@ jobs:
       - name: Extract major version
         id: version
         run: |
-          # Get the latest tag created by the release job
-          TAG_NAME="$(git describe --tags --abbrev=0)"
-          echo "Retrieved tag: $TAG_NAME"
-          # Extract major version (e.g., v8.2.7 -> v8)
+          # Use the pushed tag ref (or the dispatch input) directly; no
+          # `git describe` topology guesswork.
+          TAG_NAME="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "Resolved tag: $TAG_NAME"
+          # Extract major version (e.g. v8.2.7 -> v8)
           MAJOR_VERSION="$(echo "$TAG_NAME" | sed -E 's/^v([0-9]+)\..*/v\1/')"
           echo "major_version=$MAJOR_VERSION" >> "$GITHUB_OUTPUT"
           echo "full_version=$TAG_NAME" >> "$GITHUB_OUTPUT"
@@ -27,10 +38,6 @@ jobs:
           git config user.name "parcellab-dev-bot"
           git config user.email "dev.bot@parcellab.com"
 
-          # Delete existing major version tag if it exists
-          git tag -d "${{ steps.version.outputs.major_version }}" || true
-          git push -d origin "${{ steps.version.outputs.major_version }}" || true
-
-          # Create new major version tag pointing to the same commit as the full version
-          git tag "${{ steps.version.outputs.major_version }}"
-          git push origin tag "${{ steps.version.outputs.major_version }}"
+          # Point the major version tag at the resolved full version commit.
+          git tag -f "${{ steps.version.outputs.major_version }}" "${{ steps.version.outputs.full_version }}"
+          git push origin -f "refs/tags/${{ steps.version.outputs.major_version }}"
