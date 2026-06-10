@@ -1,10 +1,9 @@
 name: Update major tag
 on:
-  # Trigger on tag push, not `release: published` — that event is suppressed by GITHUB_TOKEN anti-recursion and left v8 a release behind (build-image input break).
-  push:
-    tags:
-      # Glob filter, not regex (`+`/`.` are literal). Exact semver enforced in the job.
-      - "v[0-9]*.[0-9]*.[0-9]*"
+  # `release: published` is suppressed when the release is published by the default GITHUB_TOKEN — publish releases as a human (or PAT), never via GITHUB_TOKEN, or v8 silently lags behind.
+  release:
+    types:
+      - published
   workflow_dispatch:
     inputs:
       tag:
@@ -14,7 +13,7 @@ on:
 jobs:
   update-major-tag:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.created }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.release.prerelease == false }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -23,7 +22,7 @@ jobs:
       - name: Extract major version
         id: version
         run: |
-          TAG_NAME="${{ github.event.inputs.tag || github.ref_name }}"
+          TAG_NAME="${{ github.event.inputs.tag || github.event.release.tag_name }}"
           echo "Resolved tag: $TAG_NAME"
           if [[ ! "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::notice::'$TAG_NAME' is not a release semver tag (vX.Y.Z); skipping major-tag update."
