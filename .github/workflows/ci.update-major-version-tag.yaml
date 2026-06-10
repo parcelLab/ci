@@ -4,16 +4,22 @@ on:
   release:
     types:
       - published
+  push:
+    tags:
+      - "v*.*.*"
   workflow_dispatch:
     inputs:
       tag:
         description: "Semver tag to align the major tag to (e.g. v8.3.8)"
         required: true
 
+permissions:
+  contents: write
+
 jobs:
   update-major-tag:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.release.prerelease == false }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.release.prerelease == false }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -22,7 +28,7 @@ jobs:
       - name: Extract major version
         id: version
         run: |
-          TAG_NAME="${{ github.event.inputs.tag || github.event.release.tag_name }}"
+          TAG_NAME="${{ github.event.inputs.tag || github.event.release.tag_name || github.ref_name }}"
           echo "Resolved tag: $TAG_NAME"
           if [[ ! "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::notice::'$TAG_NAME' is not a release semver tag (vX.Y.Z); skipping major-tag update."
