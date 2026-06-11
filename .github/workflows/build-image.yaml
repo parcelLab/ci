@@ -110,7 +110,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: eu-central-1
-          role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
+          role-to-assume: ${{ vars.AWS_ASSUME_ROLE_ARN_ECR }}
       - name: Create ECR repository if it doesn't exist
         run: |
           if ! aws ecr describe-repositories --repository-names ${{ github.event.deployment.payload.name || inputs.appName }} 2>/dev/null; then
@@ -198,7 +198,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: eu-central-1
-          role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
+          role-to-assume: ${{ vars.AWS_ASSUME_ROLE_ARN_ECR }}
       - name: Create ${{ matrix.containerfile_targets }} ECR repository if it doesn't exist
         run: |
           if ! aws ecr describe-repositories --repository-names ${{ github.event.deployment.payload.name || inputs.appName }}-${{ matrix.containerfile_targets }} 2>/dev/null; then
@@ -284,7 +284,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: eu-central-1
-          role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
+          role-to-assume: ${{ vars.AWS_ASSUME_ROLE_ARN_ECR }}
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
