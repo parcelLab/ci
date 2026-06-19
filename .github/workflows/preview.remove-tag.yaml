@@ -29,7 +29,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: eu-central-1
-          role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
+          role-to-assume: ${{ vars.AWS_ASSUME_ROLE_ARN_ECR }}
       - name: Remove preview tag from ECR
         run: |
           # Check if repository exists
