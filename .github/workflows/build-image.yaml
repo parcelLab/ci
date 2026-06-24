@@ -69,9 +69,6 @@ on:
       npmGithubReadToken:
         required: false
         description: The Github token with permissions to read NPM private packages
-      AWS_ROLE_TO_ASSUME:
-        required: false
-        description: AWS OIDC role for GitHub to assume
 
 env:
   IMAGE_SCAN_SEVERITY: LOW
