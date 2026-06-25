@@ -30,11 +30,6 @@ on:
         description: Maximum minutes before the job is cancelled
         default: 40
         type: number
-    secrets:
-      AWS_ROLE_TO_ASSUME:
-        required: true
-        description: AWS OIDC role for GitHub to assume
-
 jobs:
   build-and-push-image-to-ecr:
     permissions:
