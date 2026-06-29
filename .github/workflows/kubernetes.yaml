@@ -238,7 +238,7 @@ jobs:
     timeout-minutes: ${{ inputs.timeoutMinutes }}
     steps:
       - name: Checkout ${{ inputs.deploymentRepoURL }} git repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: ${{ inputs.deploymentRepoURL }}
           path: remote

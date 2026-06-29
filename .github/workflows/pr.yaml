@@ -30,7 +30,7 @@ jobs:
     timeout-minutes: ${{ inputs.timeoutMinutes }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Label PR based on pushed file paths
         continue-on-error: true
         uses: actions/labeler@v6.1.0

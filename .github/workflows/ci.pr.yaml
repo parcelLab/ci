@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout current git repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Set up go environment
         uses: actions/setup-go@v6
       - name: Install actionlint

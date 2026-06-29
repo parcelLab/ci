@@ -84,7 +84,7 @@ jobs:
     timeout-minutes: ${{ inputs.timeoutMinutes }}
     steps:
       - name: Checkout current git repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Validate base image registry secrets
         if: ${{ inputs.baseImageRegistry }}
         run: |
