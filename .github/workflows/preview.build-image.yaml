@@ -39,7 +39,7 @@ jobs:
     timeout-minutes: ${{ inputs.timeoutMinutes }}
     steps:
       - name: Checkout current git repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Download build artifact
         if: inputs.artifactPath != '' && inputs.artifactName != ''
         uses: actions/download-artifact@v8

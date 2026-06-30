@@ -30,7 +30,7 @@ jobs:
       full_run_required: ${{ steps.check_full_run_required.outputs.full_run_required }}
       test_run_required: ${{ steps.check_test_run_required.outputs.test_run_required }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 

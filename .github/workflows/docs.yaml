@@ -48,11 +48,11 @@ jobs:
           # shellcheck disable=SC2086
           echo "docs-push-folder=${{ github.workspace }}/remote/repos/${{ github.event.repository.name }}" >> $GITHUB_OUTPUT
       - name: Checkout current git repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: this
       - name: Checkout ${{ inputs.docsRepo }} git repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: remote
           ref: main
