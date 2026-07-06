@@ -212,7 +212,7 @@ jobs:
 
   build:
     needs: [initialize]
-    uses: parcelLab/ci/.github/workflows/build-image.yaml@v8
+    uses: parcelLab/ci/.github/workflows/build-image.yaml@v9
     with:
       artifactName: ${{ inputs.artifactName }}
       artifactPath: ${{ inputs.artifactPath }}
