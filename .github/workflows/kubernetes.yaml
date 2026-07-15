@@ -233,7 +233,7 @@ jobs:
   commit:
     needs: [initialize, build]
     environment: ${{ github.event.deployment.payload.env || inputs.env }}
-    concurrency: commit-${{ inputs.deploymentRepoURL }}-${{ github.sha }}
+    group: commit-${{ inputs.deploymentRepoURL }}-${{ github.event.deployment.payload.env || inputs.env }}
     runs-on: ${{ inputs.runner }}
     timeout-minutes: ${{ inputs.timeoutMinutes }}
     steps:
