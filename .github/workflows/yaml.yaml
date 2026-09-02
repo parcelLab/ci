@@ -29,4 +29,6 @@ jobs:
         # projects, so this must not depend on a package.json being present.
         env:
           ADDITIONAL_ARGS: ${{ inputs.additional_args }}
-        run: npx --yes prettier@3.9.6 --check "**/*.{yaml,yml}" $ADDITIONAL_ARGS
+        run: |
+          # shellcheck disable=SC2086  # additional_args is a list of globs, so word splitting is intended
+          npx --yes prettier@3.9.6 --check "**/*.{yaml,yml}" $ADDITIONAL_ARGS
