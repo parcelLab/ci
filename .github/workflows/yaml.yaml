@@ -25,8 +25,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Lint YAML files
-        # Run prettier via npx: calling repos are not necessarily Node
-        # projects, so this must not depend on a package.json being present.
+        # npx, not npm ci: calling repositories may have no package.json.
         env:
           ADDITIONAL_ARGS: ${{ inputs.additional_args }}
         run: |

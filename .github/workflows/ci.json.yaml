@@ -11,5 +11,4 @@ on:
   workflow_dispatch:
 jobs:
   lint:
-    # Lint with this repository's own copy, see ci.pr.yaml
     uses: ./.github/workflows/json.yaml

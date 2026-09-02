@@ -24,6 +24,5 @@ jobs:
       - name: Run actionlint
         run: /home/runner/go/bin/actionlint
   yamllint:
-    # Lint with this repository's own copy so a PR validates its changes
-    # to the reusable workflow, not the last released tag.
+    # Local copy, not @v9: a PR must validate its own workflow changes.
     uses: ./.github/workflows/yaml.yaml
