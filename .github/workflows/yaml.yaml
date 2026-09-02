@@ -24,14 +24,9 @@ jobs:
       - name: Checkout current git repository
         uses: actions/checkout@v7
 
-      - name: Lint all YAML files
-        uses: actionsx/prettier@v3
-        if: ${{ inputs.additional_args == '' }}
-        with:
-          args: --check "**/*.{yaml,yml}"
-
-      - name: Lint some YAML files
-        uses: actionsx/prettier@v3
-        if: ${{ inputs.additional_args != '' }}
-        with:
-          args: --check "**/*.{yaml,yml}" "${{ inputs.additional_args }}"
+      - name: Lint YAML files
+        # Run prettier via npx: calling repos are not necessarily Node
+        # projects, so this must not depend on a package.json being present.
+        env:
+          ADDITIONAL_ARGS: ${{ inputs.additional_args }}
+        run: npx --yes prettier@3.9.6 --check "**/*.{yaml,yml}" $ADDITIONAL_ARGS
