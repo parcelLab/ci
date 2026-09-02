@@ -15,4 +15,5 @@ on:
   workflow_dispatch:
 jobs:
   lint:
-    uses: parcelLab/ci/.github/workflows/yaml.yaml@v9
+    # Lint with this repository's own copy, see ci.pr.yaml
+    uses: ./.github/workflows/yaml.yaml

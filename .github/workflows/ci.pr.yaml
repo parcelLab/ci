@@ -24,4 +24,6 @@ jobs:
       - name: Run actionlint
         run: /home/runner/go/bin/actionlint
   yamllint:
-    uses: parcelLab/ci/.github/workflows/yaml.yaml@v9
+    # Lint with this repository's own copy so a PR validates its changes
+    # to the reusable workflow, not the last released tag.
+    uses: ./.github/workflows/yaml.yaml
