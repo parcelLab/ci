@@ -1,19 +1,11 @@
-# Mac
-.DS_Store
-
-# Node
-node_modules
-
-# Windows
-Thumbs.db
-
-# Editor
+# Directories
 .idea/
-.vscode
+.vscode/
+node_modules/
+tmp/
 
-# vi
-*~
-
-# General
-log/
+# Files
 *.log
+*~
+.DS_Store
+Thumbs.db
