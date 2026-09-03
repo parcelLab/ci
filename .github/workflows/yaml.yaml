@@ -24,14 +24,18 @@ jobs:
       - name: Checkout current git repository
         uses: actions/checkout@v7
 
-      - name: Lint all YAML files
-        uses: actionsx/prettier@v3
-        if: ${{ inputs.additional_args == '' }}
+      - name: Set up node environment
+        uses: actions/setup-node@v7
         with:
-          args: --check "**/*.{yaml,yml}"
+          node-version: lts/*
 
-      - name: Lint some YAML files
-        uses: actionsx/prettier@v3
-        if: ${{ inputs.additional_args != '' }}
-        with:
-          args: --check "**/*.{yaml,yml}" "${{ inputs.additional_args }}"
+      - name: Lint YAML files
+        # npx, not npm ci: calling repositories may have no package.json.
+        env:
+          ADDITIONAL_ARGS: ${{ inputs.additional_args }}
+        run: |
+          # Split additional_args into words, but leave the globs for Prettier
+          # to interpret rather than letting bash expand them against the repo.
+          set -f
+          # shellcheck disable=SC2086
+          npx --yes prettier@3.9.6 --check -- "**/*.{yaml,yml}" $ADDITIONAL_ARGS

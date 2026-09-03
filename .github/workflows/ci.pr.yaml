@@ -24,4 +24,5 @@ jobs:
       - name: Run actionlint
         run: /home/runner/go/bin/actionlint
   yamllint:
-    uses: parcelLab/ci/.github/workflows/yaml.yaml@v9
+    # Local copy, not @v9: a PR must validate its own workflow changes.
+    uses: ./.github/workflows/yaml.yaml

@@ -19,7 +19,9 @@ jobs:
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v7
-      - name: Lint JSON
-        uses: actionsx/prettier@v3
+      - name: Set up node environment
+        uses: actions/setup-node@v7
         with:
-          args: --check "**/*.json"
+          node-version: lts/*
+      - name: Lint JSON
+        run: npx --yes prettier@3.9.6 --check -- "**/*.json"
