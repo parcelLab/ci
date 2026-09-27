@@ -309,9 +309,8 @@ jobs:
             ]}'
 
           mapfile -t TARGET_CONFIGS < <(jq -c '.[]' <<< "$IMAGE_TARGETS")
-          BAKE_ARGS=(-f "$BAKE_FILE" --push --metadata-file "$RUNNER_TEMP/bake-metadata.json")
+          BAKE_ARGS=(-f "$BAKE_FILE" --push)
           BAKE_TARGETS=()
-          declare -A IMAGE_REPOSITORIES
 
           for target_config in "${TARGET_CONFIGS[@]}"; do
             bake_target=$(jq -r 'if type == "object" then .target else . end' <<< "$target_config")
@@ -334,35 +333,15 @@ jobs:
               --set "$bake_target.args.GITHUB_SHA=$GITHUB_SHA"
               --set "$bake_target.args.NPM_GITHUB_TOKEN=$NPM_GITHUB_TOKEN"
               --set "$bake_target.args.VERSION=$VERSION"
+              # ponytail: no provenance index, so tags land on the image manifest Inspector scans
+              --set "$bake_target.attest=type=provenance,disabled=true"
               --set "$bake_target.cache-from=type=registry,ref=$image_repository:cache"
               --set "$bake_target.cache-to=mode=max,image-manifest=true,oci-mediatypes=true,type=registry,ref=$image_repository:cache"
+              --set "$bake_target.tags=$image_repository:latest"
               --set "$bake_target.tags=$image_repository:$VERSION"
               --set "$bake_target.tags=$image_repository:$GITHUB_SHA"
             )
             BAKE_TARGETS+=("$bake_target")
-            IMAGE_REPOSITORIES["$bake_target"]="$image_repository"
           done
 
           docker buildx bake "${BAKE_ARGS[@]}" "${BAKE_TARGETS[@]}"
-
-          # Inspector scans image manifests, not the index carrying provenance.
-          # Keep version/SHA indexes intact and point latest at the runtime image.
-          for bake_target in "${BAKE_TARGETS[@]}"; do
-            image_repository="${IMAGE_REPOSITORIES[$bake_target]}"
-            image_digest=$(jq -er --arg target "$bake_target" '.[$target]["containerimage.digest"]' "$RUNNER_TEMP/bake-metadata.json")
-            manifest=$(docker buildx imagetools inspect --raw "$image_repository@$image_digest")
-            manifest_digest=$(jq -er --arg digest "$image_digest" '
-              if .mediaType == "application/vnd.oci.image.index.v1+json" or
-                 .mediaType == "application/vnd.docker.distribution.manifest.list.v2+json" then
-                [.manifests[] | select(.annotations["vnd.docker.reference.type"] != "attestation-manifest")]
-                | if length != 1 then error("latest requires exactly one runtime image manifest")
-                  elif .[0].mediaType == "application/vnd.oci.image.manifest.v1+json" or
-                       .[0].mediaType == "application/vnd.docker.distribution.manifest.v2+json" then .[0].digest
-                  else error("Unsupported runtime image manifest") end
-              elif .mediaType == "application/vnd.oci.image.manifest.v1+json" or
-                   .mediaType == "application/vnd.docker.distribution.manifest.v2+json" then $digest
-              else error("Unsupported image manifest") end
-            ' <<< "$manifest")
-            docker buildx imagetools create --prefer-index=false \
-              --tag "$image_repository:latest" "$image_repository@$manifest_digest"
-          done
