@@ -142,17 +142,19 @@ jobs:
           cache-to: mode=max,image-manifest=true,oci-mediatypes=true,type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}:cache
           context: ${{ github.event.deployment.payload.container.context || inputs.containerContext }}
           load: true
+          no-cache: ${{ github.event.deployment.payload.rebuild != null }}
+          pull: ${{ github.event.deployment.payload.rebuild != null }}
           file: ${{ github.event.deployment.payload.container.file || inputs.containerFile }}
           platforms: linux/amd64
           tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}:latest
+            ${{ github.event.deployment.payload.rebuild == null && format('{0}/{1}:latest', steps.login-ecr.outputs.registry, github.event.deployment.payload.name || inputs.appName) || '' }}
             ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}:${{ inputs.version }}
-            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}:${{ github.sha }}
+            ${{ github.event.deployment.payload.rebuild == null && format('{0}/{1}:{2}', steps.login-ecr.outputs.registry, github.event.deployment.payload.name || inputs.appName, github.sha) || '' }}
       - name: Scan for vulnerabilities
         if: inputs.enableContainerScan
         uses: crazy-max/ghaction-container-scan@v4
         with:
-          image: ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}:latest
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}:${{ inputs.version }}
           dockerfile: Containerfile
           severity: ${{ env.IMAGE_SCAN_SEVERITY }}
           severity_threshold: ${{ env.IMAGE_SCAN_SEVERITY_THRESHOLD }}
@@ -161,7 +163,11 @@ jobs:
           TRIVY_TIMEOUT: ${{ env.IMAGE_SCAN_TRIVY_TIMEOUT }}
       - name: Push image to ECR
         run: |
-          docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}
+          if [ "${{ github.event.deployment.payload.rebuild != null }}" = "true" ]; then
+            docker push ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}:${{ inputs.version }}
+          else
+            docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}
+          fi
 
   build-ecr-matrix:
     if: inputs.imageTargets != '' && inputs.bakeFile == ''
@@ -231,18 +237,20 @@ jobs:
           cache-to: mode=max,image-manifest=true,oci-mediatypes=true,type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}:cache
           context: ${{ github.event.deployment.payload.container.context || inputs.containerContext }}
           load: true
+          no-cache: ${{ github.event.deployment.payload.rebuild != null }}
+          pull: ${{ github.event.deployment.payload.rebuild != null }}
           file: ${{ github.event.deployment.payload.container.file || inputs.containerFile }}
           platforms: linux/amd64
           tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}-${{ matrix.containerfile_targets }}:latest
+            ${{ github.event.deployment.payload.rebuild == null && format('{0}/{1}-{2}:latest', steps.login-ecr.outputs.registry, github.event.deployment.payload.name || inputs.appName, matrix.containerfile_targets) || '' }}
             ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}-${{ matrix.containerfile_targets }}:${{ inputs.version }}
-            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}-${{ matrix.containerfile_targets }}:${{ github.sha }}
+            ${{ github.event.deployment.payload.rebuild == null && format('{0}/{1}-{2}:{3}', steps.login-ecr.outputs.registry, github.event.deployment.payload.name || inputs.appName, matrix.containerfile_targets, github.sha) || '' }}
           target: ${{ matrix.containerfile_targets }}
       - name: Scan for vulnerabilities
         if: inputs.enableContainerScan
         uses: crazy-max/ghaction-container-scan@v4
         with:
-          image: ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}-${{ matrix.containerfile_targets }}:latest
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}-${{ matrix.containerfile_targets }}:${{ inputs.version }}
           dockerfile: Containerfile
           severity: ${{ env.IMAGE_SCAN_SEVERITY }}
           severity_threshold: ${{ env.IMAGE_SCAN_SEVERITY_THRESHOLD }}
@@ -251,7 +259,11 @@ jobs:
           TRIVY_TIMEOUT: ${{ env.IMAGE_SCAN_TRIVY_TIMEOUT }}
       - name: Push ${{ matrix.containerfile_targets }} image to ECR
         run: |
-          docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}-${{ matrix.containerfile_targets }}
+          if [ "${{ github.event.deployment.payload.rebuild != null }}" = "true" ]; then
+            docker push ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}-${{ matrix.containerfile_targets }}:${{ inputs.version }}
+          else
+            docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}-${{ matrix.containerfile_targets }}
+          fi
 
   build-ecr-bake:
     if: inputs.bakeFile != ''
@@ -294,6 +306,7 @@ jobs:
           ENVIRONMENT: ${{ github.event.deployment.payload.env || inputs.env }}
           GITHUB_SHA: ${{ github.sha }}
           IMAGE_TARGETS: ${{ inputs.imageTargets }}
+          REBUILD: ${{ github.event.deployment.payload.rebuild != null }}
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           NPM_GITHUB_TOKEN: ${{ secrets.npmGithubReadToken }}
           VERSION: ${{ inputs.version }}
@@ -313,6 +326,9 @@ jobs:
 
           mapfile -t TARGET_CONFIGS < <(jq -c '.[]' <<< "$IMAGE_TARGETS")
           BAKE_ARGS=(-f "$BAKE_FILE" --push)
+          if [ "$REBUILD" = "true" ]; then
+            BAKE_ARGS+=(--pull --no-cache)
+          fi
           BAKE_TARGETS=()
 
           for target_config in "${TARGET_CONFIGS[@]}"; do
@@ -340,10 +356,14 @@ jobs:
               --set "$bake_target.attest=type=provenance,disabled=true"
               --set "$bake_target.cache-from=type=registry,ref=$image_repository:cache"
               --set "$bake_target.cache-to=mode=max,image-manifest=true,oci-mediatypes=true,type=registry,ref=$image_repository:cache"
-              --set "$bake_target.tags=$image_repository:latest"
               --set "$bake_target.tags=$image_repository:$VERSION"
-              --set "$bake_target.tags=$image_repository:$GITHUB_SHA"
             )
+            if [ "$REBUILD" != "true" ]; then
+              BAKE_ARGS+=(
+                --set "$bake_target.tags=$image_repository:latest"
+                --set "$bake_target.tags=$image_repository:$GITHUB_SHA"
+              )
+            fi
             BAKE_TARGETS+=("$bake_target")
           done
 
