@@ -120,9 +120,10 @@ jobs:
 
           echo "Applying lifecycle policies"
           LIFECYCLE_POLICY='{"rules":[
-              {"rulePriority":1,"description":"Preserve preview images","selection":{"tagStatus":"tagged","tagPatternList":["preview-*"],"countType":"sinceImagePushed","countUnit":"days","countNumber":365},"action":{"type":"expire"}},
-              {"rulePriority":2,"description":"Preserve production images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}},
-              {"rulePriority":3,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
+              {"rulePriority":1,"description":"Keep last 50 release images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}},
+              {"rulePriority":2,"description":"Keep last 10 staging images","selection":{"tagStatus":"tagged","tagPatternList":["staging-*"],"countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}},
+              {"rulePriority":3,"description":"Expire preview images after 365 days","selection":{"tagStatus":"tagged","tagPatternList":["preview-*"],"countType":"sinceImagePushed","countUnit":"days","countNumber":365},"action":{"type":"expire"}},
+              {"rulePriority":4,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
             ]}'
           aws ecr put-lifecycle-policy --repository-name ${{ github.event.deployment.payload.name || inputs.appName }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
       - name: Login to Amazon ECR
@@ -208,9 +209,10 @@ jobs:
 
           echo "Applying lifecycle policies"
           LIFECYCLE_POLICY='{"rules":[
-              {"rulePriority":1,"description":"Preserve preview images","selection":{"tagStatus":"tagged","tagPatternList":["preview-*"],"countType":"sinceImagePushed","countUnit":"days","countNumber":365},"action":{"type":"expire"}},
-              {"rulePriority":2,"description":"Preserve production images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}},
-              {"rulePriority":3,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
+              {"rulePriority":1,"description":"Keep last 50 release images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}},
+              {"rulePriority":2,"description":"Keep last 10 staging images","selection":{"tagStatus":"tagged","tagPatternList":["staging-*"],"countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}},
+              {"rulePriority":3,"description":"Expire preview images after 365 days","selection":{"tagStatus":"tagged","tagPatternList":["preview-*"],"countType":"sinceImagePushed","countUnit":"days","countNumber":365},"action":{"type":"expire"}},
+              {"rulePriority":4,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
             ]}'
           aws ecr put-lifecycle-policy --repository-name ${{ github.event.deployment.payload.name || inputs.appName }}-${{ matrix.containerfile_targets }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
       - name: Login to Amazon ECR
@@ -303,9 +305,10 @@ jobs:
           fi
 
           LIFECYCLE_POLICY='{"rules":[
-              {"rulePriority":1,"description":"Preserve preview images","selection":{"tagStatus":"tagged","tagPatternList":["preview-*"],"countType":"sinceImagePushed","countUnit":"days","countNumber":365},"action":{"type":"expire"}},
-              {"rulePriority":2,"description":"Preserve production images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}},
-              {"rulePriority":3,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
+              {"rulePriority":1,"description":"Keep last 50 release images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}},
+              {"rulePriority":2,"description":"Keep last 10 staging images","selection":{"tagStatus":"tagged","tagPatternList":["staging-*"],"countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}},
+              {"rulePriority":3,"description":"Expire preview images after 365 days","selection":{"tagStatus":"tagged","tagPatternList":["preview-*"],"countType":"sinceImagePushed","countUnit":"days","countNumber":365},"action":{"type":"expire"}},
+              {"rulePriority":4,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
             ]}'
 
           mapfile -t TARGET_CONFIGS < <(jq -c '.[]' <<< "$IMAGE_TARGETS")

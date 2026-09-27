@@ -25,17 +25,20 @@ jobs:
         with:
           aws-region: eu-central-1
           role-to-assume: ${{ vars.AWS_ASSUME_ROLE_ARN_ECR }}
-      - name: Remove preview tag from ECR
+      - name: Remove preview tags from ECR
+        env:
+          REPOSITORY: ${{ inputs.APPLICATION_NAME }}
+          PR_TAG: preview-${{ github.event.pull_request.number }}
         run: |
-          # Check if repository exists
-          if aws ecr describe-repositories --repository-names ${{ inputs.APPLICATION_NAME }} 2>/dev/null; then
-            echo "Repository ${{ inputs.APPLICATION_NAME }} exists, attempting to remove preview-${{ github.event.pull_request.number }} tag..."
-
-            # Remove the preview tag
-            aws ecr batch-delete-image \
-              --repository-name ${{ inputs.APPLICATION_NAME }} \
-              --image-ids imageTag=preview-${{ github.event.pull_request.number }} || \
-              echo "Tag preview-${{ github.event.pull_request.number }} not found or already removed"
-          else
-            echo "Repository ${{ inputs.APPLICATION_NAME }} does not exist, nothing to remove"
+          set -euo pipefail
+          if ! aws ecr describe-repositories --repository-names "$REPOSITORY" >/dev/null 2>&1; then
+            echo "Repository $REPOSITORY does not exist, nothing to remove"
+            exit 0
           fi
+          # preview-<PR> plus every preview-<PR>-<sha>; deleting an image's last tag deletes the image
+          mapfile -t TAGS < <(aws ecr list-images --repository-name "$REPOSITORY" --filter tagStatus=TAGGED \
+            --query 'imageIds[].imageTag' --output text | tr '\t' '\n' | grep -E "^$PR_TAG(-|$)" || true)
+          echo "Removing ${#TAGS[@]} tag(s) for $PR_TAG"
+          for ((i = 0; i < ${#TAGS[@]}; i += 100)); do
+            printf 'imageTag=%s\n' "${TAGS[@]:i:100}" | xargs aws ecr batch-delete-image --repository-name "$REPOSITORY" --image-ids
+          done

@@ -195,8 +195,9 @@ jobs:
             # shellcheck disable=SC2086
             echo "channel-id=${{ inputs.slackChannelTest }}" >> $GITHUB_OUTPUT
           else
+            # staging- prefix lets the ECR lifecycle policy keep the last N staging images
             # shellcheck disable=SC2086
-            echo "version=${SHA:0:7}" >> $GITHUB_OUTPUT
+            echo "version=staging-${SHA:0:7}" >> $GITHUB_OUTPUT
             # shellcheck disable=SC2086
             echo "channel-id=${{ inputs.slackChannelStaging }}" >> $GITHUB_OUTPUT
           fi
