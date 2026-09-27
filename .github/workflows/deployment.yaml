@@ -41,7 +41,7 @@ on:
         type: string
       rebuildProduction:
         required: false
-        description: Rebuild the release recorded in .chart/prod/values.yaml from its successful deployment SHA
+        description: Rebuild the production release recorded in .chart/prod/values.yaml to pick up base image updates
         default: false
         type: boolean
       runner:
@@ -76,7 +76,9 @@ jobs:
     steps:
       - name: Require production for a release rebuild
         if: inputs.rebuildProduction && inputs.env != 'prod'
-        run: exit 1
+        run: |
+          echo "::error::rebuildProduction requires env: prod"
+          exit 1
       - name: Checkout current git repository
         uses: actions/checkout@v7
         with:
@@ -87,44 +89,23 @@ jobs:
         uses: mikefarah/yq@v4.53.2
         with:
           cmd: yq -er '.${{ inputs.versionKey }}' .chart/prod/values.yaml
-      - name: Resolve the successful production deployment
+      - name: Resolve the production release to rebuild
         if: inputs.rebuildProduction
         id: rebuild
         env:
-          GH_TOKEN: ${{ secrets.repoAccessToken }}
-          APP_NAME: ${{ inputs.appName }}
           CURRENT_VERSION: ${{ steps.production-version.outputs.result }}
         run: |
           set -euo pipefail
-          gh api --paginate "repos/$GITHUB_REPOSITORY/deployments?environment=prod&per_page=100" \
-            > "$RUNNER_TEMP/production-deployments.json"
-          jq -c --arg app "$APP_NAME" --arg version "$CURRENT_VERSION" '
-            .[] | select(.payload.name == $app) |
-            select((.payload.rebuild.version // (.ref | split("/") | last)) == $version)
-          ' "$RUNNER_TEMP/production-deployments.json" > "$RUNNER_TEMP/matching-deployments.jsonl"
-          while IFS= read -r deployment; do
-            id=$(jq -r '.id' <<< "$deployment")
-            succeeded=$(gh api --paginate "repos/$GITHUB_REPOSITORY/deployments/$id/statuses?per_page=100" \
-              --jq '.[] | select(.state == "success") | .id')
-            if [[ -z "$succeeded" ]]; then
-              continue
-            fi
-            source_sha=$(jq -r '.sha' <<< "$deployment")
-            release=$(jq -r '.payload.rebuild.release // (.ref | split("/") | last)' <<< "$deployment")
-            version="$release-rebuild-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
-            if [[ ! "$version" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,127}$ ]]; then
-              echo "Invalid rebuild image tag: $version" >&2
-              exit 1
-            fi
-            metadata=$(jq -nc --arg version "$version" --arg release "$release" \
-              --arg expectedGitOpsCommit "$(git rev-parse HEAD)" \
-              '{version: $version, release: $release, expectedGitOpsCommit: $expectedGitOpsCommit}')
-            echo "ref=$source_sha" >> "$GITHUB_OUTPUT"
-            echo "metadata=$metadata" >> "$GITHUB_OUTPUT"
-            exit 0
-          done < "$RUNNER_TEMP/matching-deployments.jsonl"
-          echo "No successful production deployment matches $APP_NAME:$CURRENT_VERSION" >&2
-          exit 1
+          # Production runs a release tag or commit SHA, or an earlier rebuild of one (rebuild-<run>-<release>)
+          release=${CURRENT_VERSION#rebuild-*-}
+          # A branch (e.g. main) would rebuild unreleased code
+          if [[ ! "$release" =~ ^[0-9a-f]{40}$ ]] && ! git ls-remote --exit-code --tags origin "refs/tags/$release" >/dev/null; then
+            echo "::error::Production version '$release' is neither a release tag nor a commit SHA"
+            exit 1
+          fi
+          echo "ref=$release" >> "$GITHUB_OUTPUT"
+          jq -rn --arg version "rebuild-$GITHUB_RUN_ID-$release" --arg replaces "$CURRENT_VERSION" \
+            '"metadata=" + ({$version, $replaces} | tojson)' >> "$GITHUB_OUTPUT"
       - name: Load k8s deployment variables
         id: k8s
         run: |

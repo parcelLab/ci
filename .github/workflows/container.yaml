@@ -115,7 +115,8 @@ jobs:
               {"rulePriority":1,"description":"Keep last 50 release images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}},
               {"rulePriority":2,"description":"Keep last 10 staging images","selection":{"tagStatus":"tagged","tagPatternList":["staging-*"],"countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}},
               {"rulePriority":3,"description":"Expire preview images after 365 days","selection":{"tagStatus":"tagged","tagPatternList":["preview-*"],"countType":"sinceImagePushed","countUnit":"days","countNumber":365},"action":{"type":"expire"}},
-              {"rulePriority":4,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
+              {"rulePriority":4,"description":"Keep last 10 rebuild images","selection":{"tagStatus":"tagged","tagPatternList":["rebuild-*"],"countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}},
+              {"rulePriority":5,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
             ]}'
             aws ecr put-lifecycle-policy --repository-name ${{ inputs.appName }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
       - id: login-ecr

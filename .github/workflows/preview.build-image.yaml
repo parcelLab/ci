@@ -66,7 +66,8 @@ jobs:
               {"rulePriority":1,"description":"Keep last 50 release images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}},
               {"rulePriority":2,"description":"Keep last 10 staging images","selection":{"tagStatus":"tagged","tagPatternList":["staging-*"],"countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}},
               {"rulePriority":3,"description":"Expire preview images after 365 days","selection":{"tagStatus":"tagged","tagPatternList":["preview-*"],"countType":"sinceImagePushed","countUnit":"days","countNumber":365},"action":{"type":"expire"}},
-              {"rulePriority":4,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
+              {"rulePriority":4,"description":"Keep last 10 rebuild images","selection":{"tagStatus":"tagged","tagPatternList":["rebuild-*"],"countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}},
+              {"rulePriority":5,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
             ]}'
           aws ecr put-lifecycle-policy --repository-name ${{ inputs.APPLICATION_NAME }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
       - name: Set up Docker Buildx
@@ -82,24 +83,10 @@ jobs:
           platforms: linux/amd64
           provenance: false
           push: true
-          # preview-<PR>-<sha> is what the preview appsets deploy; it also keeps old pushes under the preview-* lifecycle rule
+          # preview-<PR>-<sha> is what the preview appsets deploy; closing the PR deletes all of them
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/${{ inputs.APPLICATION_NAME }}:preview-${{ github.event.pull_request.number }}
             ${{ steps.login-ecr.outputs.registry }}/${{ inputs.APPLICATION_NAME }}:preview-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
-      - name: Remove previous preview images of this PR
-        env:
-          REPOSITORY: ${{ inputs.APPLICATION_NAME }}
-          PREFIX: preview-${{ github.event.pull_request.number }}-
-          CURRENT: preview-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
-        run: |
-          set -euo pipefail
-          # Keep only the image just pushed; deleting an image's last tag deletes the image
-          mapfile -t OLD_TAGS < <(aws ecr list-images --repository-name "$REPOSITORY" --filter tagStatus=TAGGED \
-            --query 'imageIds[].imageTag' --output text | tr '\t' '\n' | grep "^$PREFIX" | grep -vxF "$CURRENT" || true)
-          echo "Removing ${#OLD_TAGS[@]} previous preview tag(s)"
-          for ((i = 0; i < ${#OLD_TAGS[@]}; i += 100)); do
-            printf 'imageTag=%s\n' "${OLD_TAGS[@]:i:100}" | xargs aws ecr batch-delete-image --repository-name "$REPOSITORY" --image-ids
-          done
   comment-pr:
     if: ${{ inputs.GHA_TRIGGER_EVENT != 'synchronize' }}
     runs-on: ubuntu-latest

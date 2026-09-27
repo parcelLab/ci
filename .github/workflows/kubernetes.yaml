@@ -248,22 +248,11 @@ jobs:
           path: remote
           token: ${{ secrets.repoAccessToken }}
           ref: ${{ github.event.deployment.payload.rebuild != null && (github.event.deployment.payload.pushToEnvTag == 'true' || inputs.pushToEnvTag) && 'refs/tags/prod' || 'main' }}
-      - name: Require unchanged production configuration
+      - name: Refuse to replace a newer production release
         if: github.event.deployment.payload.rebuild != null
-        id: unchanged-production
-        working-directory: remote
-        env:
-          EXPECTED_COMMIT: ${{ github.event.deployment.payload.rebuild.expectedGitOpsCommit }}
-          PUSH_TO_ENV_TAG: ${{ github.event.deployment.payload.pushToEnvTag || inputs.pushToEnvTag }}
-        run: |
-          set -euo pipefail
-          if [[ "$(git rev-parse HEAD)" != "$EXPECTED_COMMIT" ]]; then
-            echo "Production configuration changed during this rebuild; refusing to deploy it." >&2
-            exit 1
-          fi
-          if [[ "$PUSH_TO_ENV_TAG" == 'true' ]]; then
-            echo "tag-object=$(git rev-parse refs/tags/prod)" >> "$GITHUB_OUTPUT"
-          fi
+        uses: mikefarah/yq@v4.53.2
+        with:
+          cmd: yq -e '.${{ github.event.deployment.payload.kubernetes.versionKey || inputs.versionKey }} == "${{ github.event.deployment.payload.rebuild.replaces }}"' remote/${{ inputs.deploymentRepoPath }}/values.yaml
       - name: Deploy ${{ github.sha }} to ${{ github.event.deployment.environment || inputs.env }} values
         uses: mikefarah/yq@v4.53.2
         with:
@@ -280,11 +269,7 @@ jobs:
             echo "Set new image tag to $ENV"
             NEW_SHA=$(git rev-parse HEAD)
             git tag -fa "$ENV" -m "$ENV deploy $VERSION ($NEW_SHA)" "$NEW_SHA"
-            if [[ -n "$EXPECTED_TAG_OBJECT" ]]; then
-              git push origin "--force-with-lease=refs/tags/$ENV:$EXPECTED_TAG_OBJECT" "refs/tags/$ENV"
-            else
-              git push origin -f "refs/tags/$ENV"
-            fi
+            git push origin -f "refs/tags/$ENV"
           else
             git push origin main
           fi
@@ -294,7 +279,6 @@ jobs:
           ENV: ${{ github.event.deployment.payload.env || inputs.env }}
           VERSION: ${{ needs.initialize.outputs.version }}
           PUSH_TO_ENV_TAG: ${{ github.event.deployment.payload.pushToEnvTag || inputs.pushToEnvTag }}
-          EXPECTED_TAG_OBJECT: ${{ steps.unchanged-production.outputs.tag-object }}
       - if: success() && github.event_name == 'deployment'
         name: Successful ${{ github.event.deployment.payload.name || inputs.appName }} deployment
         uses: chrnorm/deployment-status@v2

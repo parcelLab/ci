@@ -123,7 +123,8 @@ jobs:
               {"rulePriority":1,"description":"Keep last 50 release images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}},
               {"rulePriority":2,"description":"Keep last 10 staging images","selection":{"tagStatus":"tagged","tagPatternList":["staging-*"],"countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}},
               {"rulePriority":3,"description":"Expire preview images after 365 days","selection":{"tagStatus":"tagged","tagPatternList":["preview-*"],"countType":"sinceImagePushed","countUnit":"days","countNumber":365},"action":{"type":"expire"}},
-              {"rulePriority":4,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
+              {"rulePriority":4,"description":"Keep last 10 rebuild images","selection":{"tagStatus":"tagged","tagPatternList":["rebuild-*"],"countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}},
+              {"rulePriority":5,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
             ]}'
           aws ecr put-lifecycle-policy --repository-name ${{ github.event.deployment.payload.name || inputs.appName }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
       - name: Login to Amazon ECR
@@ -147,9 +148,9 @@ jobs:
           file: ${{ github.event.deployment.payload.container.file || inputs.containerFile }}
           platforms: linux/amd64
           tags: |
-            ${{ github.event.deployment.payload.rebuild == null && format('{0}/{1}:latest', steps.login-ecr.outputs.registry, github.event.deployment.payload.name || inputs.appName) || '' }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}:latest
             ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}:${{ inputs.version }}
-            ${{ github.event.deployment.payload.rebuild == null && format('{0}/{1}:{2}', steps.login-ecr.outputs.registry, github.event.deployment.payload.name || inputs.appName, github.sha) || '' }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}:${{ github.sha }}
       - name: Scan for vulnerabilities
         if: inputs.enableContainerScan
         uses: crazy-max/ghaction-container-scan@v4
@@ -163,11 +164,7 @@ jobs:
           TRIVY_TIMEOUT: ${{ env.IMAGE_SCAN_TRIVY_TIMEOUT }}
       - name: Push image to ECR
         run: |
-          if [ "${{ github.event.deployment.payload.rebuild != null }}" = "true" ]; then
-            docker push ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}:${{ inputs.version }}
-          else
-            docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}
-          fi
+          docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}
 
   build-ecr-matrix:
     if: inputs.imageTargets != '' && inputs.bakeFile == ''
@@ -218,7 +215,8 @@ jobs:
               {"rulePriority":1,"description":"Keep last 50 release images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}},
               {"rulePriority":2,"description":"Keep last 10 staging images","selection":{"tagStatus":"tagged","tagPatternList":["staging-*"],"countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}},
               {"rulePriority":3,"description":"Expire preview images after 365 days","selection":{"tagStatus":"tagged","tagPatternList":["preview-*"],"countType":"sinceImagePushed","countUnit":"days","countNumber":365},"action":{"type":"expire"}},
-              {"rulePriority":4,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
+              {"rulePriority":4,"description":"Keep last 10 rebuild images","selection":{"tagStatus":"tagged","tagPatternList":["rebuild-*"],"countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}},
+              {"rulePriority":5,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
             ]}'
           aws ecr put-lifecycle-policy --repository-name ${{ github.event.deployment.payload.name || inputs.appName }}-${{ matrix.containerfile_targets }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
       - name: Login to Amazon ECR
@@ -242,9 +240,9 @@ jobs:
           file: ${{ github.event.deployment.payload.container.file || inputs.containerFile }}
           platforms: linux/amd64
           tags: |
-            ${{ github.event.deployment.payload.rebuild == null && format('{0}/{1}-{2}:latest', steps.login-ecr.outputs.registry, github.event.deployment.payload.name || inputs.appName, matrix.containerfile_targets) || '' }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}-${{ matrix.containerfile_targets }}:latest
             ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}-${{ matrix.containerfile_targets }}:${{ inputs.version }}
-            ${{ github.event.deployment.payload.rebuild == null && format('{0}/{1}-{2}:{3}', steps.login-ecr.outputs.registry, github.event.deployment.payload.name || inputs.appName, matrix.containerfile_targets, github.sha) || '' }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}-${{ matrix.containerfile_targets }}:${{ github.sha }}
           target: ${{ matrix.containerfile_targets }}
       - name: Scan for vulnerabilities
         if: inputs.enableContainerScan
@@ -259,11 +257,7 @@ jobs:
           TRIVY_TIMEOUT: ${{ env.IMAGE_SCAN_TRIVY_TIMEOUT }}
       - name: Push ${{ matrix.containerfile_targets }} image to ECR
         run: |
-          if [ "${{ github.event.deployment.payload.rebuild != null }}" = "true" ]; then
-            docker push ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}-${{ matrix.containerfile_targets }}:${{ inputs.version }}
-          else
-            docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}-${{ matrix.containerfile_targets }}
-          fi
+          docker push -a ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}-${{ matrix.containerfile_targets }}
 
   build-ecr-bake:
     if: inputs.bakeFile != ''
@@ -321,7 +315,8 @@ jobs:
               {"rulePriority":1,"description":"Keep last 50 release images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}},
               {"rulePriority":2,"description":"Keep last 10 staging images","selection":{"tagStatus":"tagged","tagPatternList":["staging-*"],"countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}},
               {"rulePriority":3,"description":"Expire preview images after 365 days","selection":{"tagStatus":"tagged","tagPatternList":["preview-*"],"countType":"sinceImagePushed","countUnit":"days","countNumber":365},"action":{"type":"expire"}},
-              {"rulePriority":4,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
+              {"rulePriority":4,"description":"Keep last 10 rebuild images","selection":{"tagStatus":"tagged","tagPatternList":["rebuild-*"],"countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}},
+              {"rulePriority":5,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
             ]}'
 
           mapfile -t TARGET_CONFIGS < <(jq -c '.[]' <<< "$IMAGE_TARGETS")
@@ -357,13 +352,9 @@ jobs:
               --set "$bake_target.cache-from=type=registry,ref=$image_repository:cache"
               --set "$bake_target.cache-to=mode=max,image-manifest=true,oci-mediatypes=true,type=registry,ref=$image_repository:cache"
               --set "$bake_target.tags=$image_repository:$VERSION"
+              --set "$bake_target.tags=$image_repository:latest"
+              --set "$bake_target.tags=$image_repository:$GITHUB_SHA"
             )
-            if [ "$REBUILD" != "true" ]; then
-              BAKE_ARGS+=(
-                --set "$bake_target.tags=$image_repository:latest"
-                --set "$bake_target.tags=$image_repository:$GITHUB_SHA"
-              )
-            fi
             BAKE_TARGETS+=("$bake_target")
           done
 
