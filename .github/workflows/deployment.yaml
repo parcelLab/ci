@@ -96,7 +96,7 @@ jobs:
           CURRENT_VERSION: ${{ steps.production-version.outputs.result }}
         run: |
           set -euo pipefail
-          # Production runs a release tag or commit SHA, or an earlier rebuild of one (rebuild-<run>-<release>)
+          # Production runs a release tag or commit SHA, or an earlier rebuild of one (rebuild-<run>.<attempt>-<release>)
           release=${CURRENT_VERSION#rebuild-*-}
           # A branch (e.g. main) would rebuild unreleased code
           if [[ ! "$release" =~ ^[0-9a-f]{40}$ ]] && ! git ls-remote --exit-code --tags origin "refs/tags/$release" >/dev/null; then
@@ -104,7 +104,7 @@ jobs:
             exit 1
           fi
           echo "ref=$release" >> "$GITHUB_OUTPUT"
-          jq -rn --arg version "rebuild-$GITHUB_RUN_ID-$release" --arg replaces "$CURRENT_VERSION" \
+          jq -rn --arg version "rebuild-$GITHUB_RUN_ID.$GITHUB_RUN_ATTEMPT-$release" --arg replaces "$CURRENT_VERSION" \
             '"metadata=" + ({$version, $replaces} | tojson)' >> "$GITHUB_OUTPUT"
       - name: Load k8s deployment variables
         id: k8s
