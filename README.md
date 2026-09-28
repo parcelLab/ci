@@ -9,6 +9,13 @@ good CI/CD practices to the community.
 
 While the structure is very much solving parcelLab's unique use cases, the files here could be reused by anybody else as they do not have any business logic attached.
 
+## Weekly production rebuilds
+
+Call `deployment.yaml` on a schedule with `env: prod` and `rebuildProduction: true` to rebuild
+the release tag or commit in `.chart/prod/values.yaml` (at the `prod` tag with `pushToEnvTag`, else `main`)
+with fresh base images and no cache. It deploys as `rebuild-<run-id>.<attempt>-<release>` and is skipped
+if another release reaches production first.
+
 ## Contributing
 
 [Contribution guidelines](CONTRIBUTING.md)

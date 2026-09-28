@@ -178,6 +178,8 @@ jobs:
           fi
       - name: Load deployment variables
         id: vars
+        env:
+          REBUILD_VERSION: ${{ github.event.deployment.payload.rebuild.version }}
         run: |
           REF="${{ github.event.deployment.ref || inputs.ref }}"
           SHA="${{ github.event.deployment.sha || inputs.sha || github.sha }}"
@@ -185,7 +187,7 @@ jobs:
           if [[ "$DEPLOY_ENV" == 'prod' ]]
           then
             # shellcheck disable=SC2086
-            echo "version=${REF##*/}" >> $GITHUB_OUTPUT
+            echo "version=${REBUILD_VERSION:-${REF##*/}}" >> $GITHUB_OUTPUT
             # shellcheck disable=SC2086
             echo "channel-id=${{ inputs.slackChannelProd }}" >> $GITHUB_OUTPUT
           elif [[ "$DEPLOY_ENV" == 'test' ]]
@@ -195,8 +197,9 @@ jobs:
             # shellcheck disable=SC2086
             echo "channel-id=${{ inputs.slackChannelTest }}" >> $GITHUB_OUTPUT
           else
+            # staging- prefix lets the ECR lifecycle policy keep the last N staging images
             # shellcheck disable=SC2086
-            echo "version=${SHA:0:7}" >> $GITHUB_OUTPUT
+            echo "version=staging-${SHA:0:7}" >> $GITHUB_OUTPUT
             # shellcheck disable=SC2086
             echo "channel-id=${{ inputs.slackChannelStaging }}" >> $GITHUB_OUTPUT
           fi
@@ -244,7 +247,12 @@ jobs:
           repository: ${{ inputs.deploymentRepoURL }}
           path: remote
           token: ${{ secrets.repoAccessToken }}
-          ref: main
+          ref: ${{ github.event.deployment.payload.rebuild != null && (github.event.deployment.payload.pushToEnvTag == 'true' || inputs.pushToEnvTag) && 'refs/tags/prod' || 'main' }}
+      - name: Refuse to replace a newer production release
+        if: github.event.deployment.payload.rebuild != null
+        uses: mikefarah/yq@v4.53.2
+        with:
+          cmd: yq -e '.${{ github.event.deployment.payload.kubernetes.versionKey || inputs.versionKey }} == "${{ github.event.deployment.payload.rebuild.replaces }}"' remote/${{ inputs.deploymentRepoPath }}/values.yaml
       - name: Deploy ${{ github.sha }} to ${{ github.event.deployment.environment || inputs.env }} values
         uses: mikefarah/yq@v4.53.2
         with:

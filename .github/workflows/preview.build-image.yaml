@@ -63,9 +63,11 @@ jobs:
 
           echo "Applying lifecycle policies"
           LIFECYCLE_POLICY='{"rules":[
-              {"rulePriority":1,"description":"Preserve preview images","selection":{"tagStatus":"tagged","tagPatternList":["preview-*"],"countType":"sinceImagePushed","countUnit":"days","countNumber":365},"action":{"type":"expire"}},
-              {"rulePriority":2,"description":"Preserve production images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}},
-              {"rulePriority":3,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
+              {"rulePriority":1,"description":"Keep last 50 release images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}},
+              {"rulePriority":2,"description":"Keep last 10 staging images","selection":{"tagStatus":"tagged","tagPatternList":["staging-*"],"countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}},
+              {"rulePriority":3,"description":"Expire preview images after 365 days","selection":{"tagStatus":"tagged","tagPatternList":["preview-*"],"countType":"sinceImagePushed","countUnit":"days","countNumber":365},"action":{"type":"expire"}},
+              {"rulePriority":4,"description":"Keep last 10 rebuild images","selection":{"tagStatus":"tagged","tagPatternList":["rebuild-*"],"countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}},
+              {"rulePriority":5,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
             ]}'
           aws ecr put-lifecycle-policy --repository-name ${{ inputs.APPLICATION_NAME }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
       - name: Set up Docker Buildx
@@ -81,9 +83,10 @@ jobs:
           platforms: linux/amd64
           provenance: false
           push: true
+          # preview-<PR>-<sha> is what the preview appsets deploy; closing the PR deletes all of them
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/${{ inputs.APPLICATION_NAME }}:preview-${{ github.event.pull_request.number }}
-            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.APPLICATION_NAME }}:${{ github.event.pull_request.head.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ inputs.APPLICATION_NAME }}:preview-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
   comment-pr:
     if: ${{ inputs.GHA_TRIGGER_EVENT != 'synchronize' }}
     runs-on: ubuntu-latest

@@ -39,6 +39,11 @@ on:
         description: The github ref to deploy
         default: main
         type: string
+      rebuildProduction:
+        required: false
+        description: Rebuild the production release recorded in .chart/prod/values.yaml to pick up base image updates
+        default: false
+        type: boolean
       runner:
         required: false
         description: Runner type
@@ -69,8 +74,38 @@ jobs:
     runs-on: ${{ inputs.runner }}
     timeout-minutes: ${{ inputs.timeoutMinutes }}
     steps:
+      - name: Require production for a release rebuild
+        if: inputs.rebuildProduction && inputs.env != 'prod'
+        run: |
+          echo "::error::rebuildProduction requires env: prod"
+          exit 1
       - name: Checkout current git repository
         uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.rebuildProduction && (inputs.pushToEnvTag && 'refs/tags/prod' || 'main') || '' }}
+      - name: Read current production image version
+        if: inputs.rebuildProduction
+        id: production-version
+        uses: mikefarah/yq@v4.53.2
+        with:
+          cmd: yq -er '.${{ inputs.versionKey }}' .chart/prod/values.yaml
+      - name: Resolve the production release to rebuild
+        if: inputs.rebuildProduction
+        id: rebuild
+        env:
+          CURRENT_VERSION: ${{ steps.production-version.outputs.result }}
+        run: |
+          set -euo pipefail
+          # Production runs a release tag or commit SHA, or an earlier rebuild of one (rebuild-<run>.<attempt>-<release>)
+          release=${CURRENT_VERSION#rebuild-*-}
+          # A branch (e.g. main) would rebuild unreleased code
+          if [[ ! "$release" =~ ^[0-9a-f]{40}$ ]] && ! git ls-remote --exit-code --tags origin "refs/tags/$release" >/dev/null; then
+            echo "::error::Production version '$release' is neither a release tag nor a commit SHA"
+            exit 1
+          fi
+          echo "ref=$release" >> "$GITHUB_OUTPUT"
+          jq -rn --arg version "rebuild-$GITHUB_RUN_ID.$GITHUB_RUN_ATTEMPT-$release" --arg replaces "$CURRENT_VERSION" \
+            '"metadata=" + ({$version, $replaces} | tojson)' >> "$GITHUB_OUTPUT"
       - name: Load k8s deployment variables
         id: k8s
         run: |
@@ -91,7 +126,7 @@ jobs:
         with:
           auto-merge: false
           environment: ${{ inputs.env }}
-          ref: ${{ inputs.ref }}
+          ref: ${{ steps.rebuild.outputs.ref || inputs.ref }}
           required-contexts: ""
           payload: |
             {
@@ -108,6 +143,7 @@ jobs:
                 "versionKey": "${{ inputs.versionKey }}"
               },
               "pushToEnvTag": "${{ inputs.pushToEnvTag }}",
+              "rebuild": ${{ steps.rebuild.outputs.metadata || 'null' }},
               "statusUrl": ${{ toJSON(steps.k8s.outputs.status-url) }},
               "url": ${{ toJSON(steps.k8s.outputs.url) }}
             }

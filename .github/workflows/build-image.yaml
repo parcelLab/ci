@@ -120,9 +120,11 @@ jobs:
 
           echo "Applying lifecycle policies"
           LIFECYCLE_POLICY='{"rules":[
-              {"rulePriority":1,"description":"Preserve preview images","selection":{"tagStatus":"tagged","tagPatternList":["preview-*"],"countType":"sinceImagePushed","countUnit":"days","countNumber":365},"action":{"type":"expire"}},
-              {"rulePriority":2,"description":"Preserve production images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}},
-              {"rulePriority":3,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
+              {"rulePriority":1,"description":"Keep last 50 release images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}},
+              {"rulePriority":2,"description":"Keep last 10 staging images","selection":{"tagStatus":"tagged","tagPatternList":["staging-*"],"countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}},
+              {"rulePriority":3,"description":"Expire preview images after 365 days","selection":{"tagStatus":"tagged","tagPatternList":["preview-*"],"countType":"sinceImagePushed","countUnit":"days","countNumber":365},"action":{"type":"expire"}},
+              {"rulePriority":4,"description":"Keep last 10 rebuild images","selection":{"tagStatus":"tagged","tagPatternList":["rebuild-*"],"countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}},
+              {"rulePriority":5,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
             ]}'
           aws ecr put-lifecycle-policy --repository-name ${{ github.event.deployment.payload.name || inputs.appName }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
       - name: Login to Amazon ECR
@@ -141,6 +143,8 @@ jobs:
           cache-to: mode=max,image-manifest=true,oci-mediatypes=true,type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}:cache
           context: ${{ github.event.deployment.payload.container.context || inputs.containerContext }}
           load: true
+          no-cache: ${{ github.event.deployment.payload.rebuild != null }}
+          pull: ${{ github.event.deployment.payload.rebuild != null }}
           file: ${{ github.event.deployment.payload.container.file || inputs.containerFile }}
           platforms: linux/amd64
           tags: |
@@ -151,7 +155,7 @@ jobs:
         if: inputs.enableContainerScan
         uses: crazy-max/ghaction-container-scan@v4
         with:
-          image: ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}:latest
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}:${{ inputs.version }}
           dockerfile: Containerfile
           severity: ${{ env.IMAGE_SCAN_SEVERITY }}
           severity_threshold: ${{ env.IMAGE_SCAN_SEVERITY_THRESHOLD }}
@@ -208,9 +212,11 @@ jobs:
 
           echo "Applying lifecycle policies"
           LIFECYCLE_POLICY='{"rules":[
-              {"rulePriority":1,"description":"Preserve preview images","selection":{"tagStatus":"tagged","tagPatternList":["preview-*"],"countType":"sinceImagePushed","countUnit":"days","countNumber":365},"action":{"type":"expire"}},
-              {"rulePriority":2,"description":"Preserve production images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}},
-              {"rulePriority":3,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
+              {"rulePriority":1,"description":"Keep last 50 release images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}},
+              {"rulePriority":2,"description":"Keep last 10 staging images","selection":{"tagStatus":"tagged","tagPatternList":["staging-*"],"countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}},
+              {"rulePriority":3,"description":"Expire preview images after 365 days","selection":{"tagStatus":"tagged","tagPatternList":["preview-*"],"countType":"sinceImagePushed","countUnit":"days","countNumber":365},"action":{"type":"expire"}},
+              {"rulePriority":4,"description":"Keep last 10 rebuild images","selection":{"tagStatus":"tagged","tagPatternList":["rebuild-*"],"countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}},
+              {"rulePriority":5,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
             ]}'
           aws ecr put-lifecycle-policy --repository-name ${{ github.event.deployment.payload.name || inputs.appName }}-${{ matrix.containerfile_targets }} --lifecycle-policy-text "$LIFECYCLE_POLICY"
       - name: Login to Amazon ECR
@@ -229,6 +235,8 @@ jobs:
           cache-to: mode=max,image-manifest=true,oci-mediatypes=true,type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}:cache
           context: ${{ github.event.deployment.payload.container.context || inputs.containerContext }}
           load: true
+          no-cache: ${{ github.event.deployment.payload.rebuild != null }}
+          pull: ${{ github.event.deployment.payload.rebuild != null }}
           file: ${{ github.event.deployment.payload.container.file || inputs.containerFile }}
           platforms: linux/amd64
           tags: |
@@ -240,7 +248,7 @@ jobs:
         if: inputs.enableContainerScan
         uses: crazy-max/ghaction-container-scan@v4
         with:
-          image: ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}-${{ matrix.containerfile_targets }}:latest
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ github.event.deployment.payload.name || inputs.appName }}-${{ matrix.containerfile_targets }}:${{ inputs.version }}
           dockerfile: Containerfile
           severity: ${{ env.IMAGE_SCAN_SEVERITY }}
           severity_threshold: ${{ env.IMAGE_SCAN_SEVERITY_THRESHOLD }}
@@ -292,6 +300,7 @@ jobs:
           ENVIRONMENT: ${{ github.event.deployment.payload.env || inputs.env }}
           GITHUB_SHA: ${{ github.sha }}
           IMAGE_TARGETS: ${{ inputs.imageTargets }}
+          REBUILD: ${{ github.event.deployment.payload.rebuild != null }}
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           NPM_GITHUB_TOKEN: ${{ secrets.npmGithubReadToken }}
           VERSION: ${{ inputs.version }}
@@ -303,13 +312,18 @@ jobs:
           fi
 
           LIFECYCLE_POLICY='{"rules":[
-              {"rulePriority":1,"description":"Preserve preview images","selection":{"tagStatus":"tagged","tagPatternList":["preview-*"],"countType":"sinceImagePushed","countUnit":"days","countNumber":365},"action":{"type":"expire"}},
-              {"rulePriority":2,"description":"Preserve production images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}},
-              {"rulePriority":3,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
+              {"rulePriority":1,"description":"Keep last 50 release images","selection":{"tagStatus":"tagged","tagPatternList":["v*"],"countType":"imageCountMoreThan","countNumber":50},"action":{"type":"expire"}},
+              {"rulePriority":2,"description":"Keep last 10 staging images","selection":{"tagStatus":"tagged","tagPatternList":["staging-*"],"countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}},
+              {"rulePriority":3,"description":"Expire preview images after 365 days","selection":{"tagStatus":"tagged","tagPatternList":["preview-*"],"countType":"sinceImagePushed","countUnit":"days","countNumber":365},"action":{"type":"expire"}},
+              {"rulePriority":4,"description":"Keep last 10 rebuild images","selection":{"tagStatus":"tagged","tagPatternList":["rebuild-*"],"countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}},
+              {"rulePriority":5,"description":"Remove untagged images","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}
             ]}'
 
           mapfile -t TARGET_CONFIGS < <(jq -c '.[]' <<< "$IMAGE_TARGETS")
           BAKE_ARGS=(-f "$BAKE_FILE" --push)
+          if [ "$REBUILD" = "true" ]; then
+            BAKE_ARGS+=(--pull --no-cache)
+          fi
           BAKE_TARGETS=()
 
           for target_config in "${TARGET_CONFIGS[@]}"; do
@@ -333,10 +347,12 @@ jobs:
               --set "$bake_target.args.GITHUB_SHA=$GITHUB_SHA"
               --set "$bake_target.args.NPM_GITHUB_TOKEN=$NPM_GITHUB_TOKEN"
               --set "$bake_target.args.VERSION=$VERSION"
+              # ponytail: no provenance index, so tags land on the image manifest Inspector scans
+              --set "$bake_target.attest=type=provenance,disabled=true"
               --set "$bake_target.cache-from=type=registry,ref=$image_repository:cache"
               --set "$bake_target.cache-to=mode=max,image-manifest=true,oci-mediatypes=true,type=registry,ref=$image_repository:cache"
-              --set "$bake_target.tags=$image_repository:latest"
               --set "$bake_target.tags=$image_repository:$VERSION"
+              --set "$bake_target.tags=$image_repository:latest"
               --set "$bake_target.tags=$image_repository:$GITHUB_SHA"
             )
             BAKE_TARGETS+=("$bake_target")
