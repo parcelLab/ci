@@ -30,6 +30,10 @@ on:
         description: Maximum minutes before the job is cancelled
         default: 40
         type: number
+    secrets:
+      npmGithubReadToken:
+        required: false
+        description: The Github token with permissions to read NPM private packages, available to the build as the npm_github_token secret
 jobs:
   build-and-push-image-to-ecr:
     permissions:
@@ -83,6 +87,8 @@ jobs:
           platforms: linux/amd64
           provenance: false
           push: true
+          secrets: |
+            npm_github_token=${{ secrets.npmGithubReadToken }}
           # preview-<PR>-<sha> is what the preview appsets deploy; closing the PR deletes all of them
           tags: |
             ${{ steps.login-ecr.outputs.registry }}/${{ inputs.APPLICATION_NAME }}:preview-${{ github.event.pull_request.number }}
