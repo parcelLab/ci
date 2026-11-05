@@ -1,0 +1,51 @@
+name: Reusable Helm
+on:
+  workflow_call:
+    inputs:
+      runner:
+        required: false
+        description: Runner type
+        default: ubuntu-latest
+        type: string
+      timeoutMinutes:
+        required: false
+        description: Maximum minutes before the job is cancelled
+        default: 40
+        type: number
+      chartsPath:
+        required: false
+        description: Directory searched for charts (every directory with a Chart.yaml)
+        default: .chart
+        type: string
+jobs:
+  helm:
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeoutMinutes }}
+    steps:
+      - name: Checkout current git repository
+        uses: actions/checkout@v7
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5
+
+      - name: Lint and render charts
+        env:
+          CHARTS_PATH: ${{ inputs.chartsPath }}
+        run: |
+          set -euo pipefail
+          # Skip subcharts that `helm dependency build` vendors into <chart>/charts/.
+          charts=$(find "$CHARTS_PATH" -name Chart.yaml -not -path "$CHARTS_PATH/*/charts/*" -exec dirname {} \; | sort)
+          if [ -z "$charts" ]; then
+            echo "::error::No Chart.yaml found under $CHARTS_PATH"
+            exit 1
+          fi
+          while IFS= read -r chart; do
+            echo "::group::$chart"
+            helm dependency build "$chart"
+            helm lint "$chart"
+            # Library charts render nothing and make `helm template` fail.
+            if ! helm show chart "$chart" | grep -q "^type: library"; then
+              helm template "$chart" > /dev/null
+            fi
+            echo "::endgroup::"
+          done <<< "$charts"
