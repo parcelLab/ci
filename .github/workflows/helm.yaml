@@ -33,13 +33,21 @@ jobs:
           CHARTS_PATH: ${{ inputs.chartsPath }}
         run: |
           set -euo pipefail
-          # Skip subcharts that `helm dependency build` vendors into <chart>/charts/.
-          charts=$(find "$CHARTS_PATH" -name Chart.yaml -not -path "$CHARTS_PATH/*/charts/*" -exec dirname {} \; | sort)
-          if [ -z "$charts" ]; then
+          charts=()
+          while IFS= read -r chart; do
+            parent=$(dirname "$chart")
+            # A chart in <chart>/charts/ is a vendored dependency. It is validated
+            # through its parent, which supplies its values.
+            if [ "$(basename "$parent")" = charts ] && [ -f "$(dirname "$parent")/Chart.yaml" ]; then
+              continue
+            fi
+            charts+=("$chart")
+          done < <(find "$CHARTS_PATH" -name Chart.yaml -exec dirname {} \; | sort)
+          if [ ${#charts[@]} -eq 0 ]; then
             echo "::error::No Chart.yaml found under $CHARTS_PATH"
             exit 1
           fi
-          while IFS= read -r chart; do
+          for chart in "${charts[@]}"; do
             echo "::group::$chart"
             helm dependency build "$chart"
             helm lint "$chart"
@@ -48,4 +56,4 @@ jobs:
               helm template "$chart" > /dev/null
             fi
             echo "::endgroup::"
-          done <<< "$charts"
+          done
