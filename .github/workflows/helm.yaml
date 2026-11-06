@@ -17,6 +17,11 @@ on:
         description: Directory searched for charts (every directory with a Chart.yaml)
         default: .chart
         type: string
+      ref:
+        required: false
+        description: Git ref or SHA to validate (default the commit that triggered the caller)
+        default: ""
+        type: string
 jobs:
   helm:
     runs-on: ${{ inputs.runner }}
@@ -24,6 +29,8 @@ jobs:
     steps:
       - name: Checkout current git repository
         uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
 
       - name: Set up Helm
         uses: azure/setup-helm@v5
