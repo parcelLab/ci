@@ -1,0 +1,201 @@
+name: Reusable Container Security
+on:
+  workflow_call:
+    inputs:
+      runner:
+        required: false
+        description: Runner type
+        default: ubuntu-latest
+        type: string
+      timeoutMinutes:
+        required: false
+        description: Maximum minutes before the scan job is cancelled
+        default: 50
+        type: number
+      images:
+        required: false
+        description: >-
+          JSON array of images to scan. Each entry takes name (default: the
+          repository name), file (default: Containerfile), context (default: .)
+          and target (default: final stage)
+        default: "[{}]"
+        type: string
+      openPullRequest:
+        required: false
+        description: >-
+          Keep one findings PR open on the default branch while HIGH/CRITICAL
+          findings exist, and close it once they are resolved. Needs contents
+          and pull-requests write permissions from the caller
+        default: false
+        type: boolean
+      allowPublicRepository:
+        required: false
+        description: >-
+          Run in a public repository. Run summaries, artifacts and the findings
+          PR list unpatched vulnerabilities, so this is off by default
+        default: false
+        type: boolean
+    outputs:
+      resolved:
+        description: "true when no HIGH/CRITICAL findings remain"
+        value: ${{ jobs.report.outputs.resolved }}
+
+jobs:
+  plan:
+    name: Plan image scans
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 5
+    permissions: {}
+    outputs:
+      images: ${{ steps.plan.outputs.images }}
+      targets: ${{ steps.plan.outputs.targets }}
+    steps:
+      - name: Resolve images
+        id: plan
+        env:
+          IMAGES: ${{ inputs.images }}
+          REPOSITORY: ${{ github.event.repository.name }}
+          PRIVATE: ${{ github.event.repository.private }}
+          ALLOW_PUBLIC: ${{ inputs.allowPublicRepository }}
+        run: |
+          if [ "$PRIVATE" != "true" ] && [ "$ALLOW_PUBLIC" != "true" ]; then
+            echo "::error::Findings would be public in this repository. Set allowPublicRepository to run anyway."
+            exit 1
+          fi
+          images=$(jq -ce '
+            def or_default($d): if . == null or . == "" then $d else . end;
+            map({name: (.name | or_default(env.REPOSITORY)), file: (.file | or_default("Containerfile")), context: (.context | or_default(".")), target: (.target // "")})
+            | if length > 0 and all(.[]; .name | type == "string" and test("^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")) and (map(.name) | unique | length) == length
+              then . else error("images must be a non-empty array with unique, safe names") end' <<<"$IMAGES")
+          echo "images=$images" >> "$GITHUB_OUTPUT"
+          echo "targets=$(jq -r 'map(.name) | join(",")' <<<"$images")" >> "$GITHUB_OUTPUT"
+
+  scan:
+    name: Scan ${{ matrix.image.name }}
+    needs: plan
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeoutMinutes }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ${{ fromJSON(needs.plan.outputs.images) }}
+    steps:
+      - name: Checkout current git repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Set up docker buildx
+        uses: docker/setup-buildx-action@v4
+      # No cache and a fresh pull, so the base image and package upgrades
+      # reflect what a build today would ship.
+      - name: Build image
+        uses: docker/build-push-action@v7.2.0
+        with:
+          context: ${{ matrix.image.context }}
+          file: ${{ matrix.image.file }}
+          target: ${{ matrix.image.target }}
+          pull: true
+          no-cache: true
+          load: true
+          push: false
+          tags: container-security:${{ matrix.image.name }}
+      # Trivy is installed from its release, pinned by hash, rather than through a
+      # wrapper action: nothing third party runs in the job that holds the findings.
+      - name: Install Trivy
+        env:
+          TRIVY_VERSION: 0.76.1
+        run: |
+          case "$RUNNER_ARCH" in
+            X64) asset=Linux-64bit sha256=c7cbe3137fb8a48a17574bede3dd6beb16742d1e9772929940fc90082c39d9c0 ;;
+            ARM64) asset=Linux-ARM64 sha256=e174dff2a6dba5e3ae41f8d0537a6324405bd08132497340304c6b20e0f16a1f ;;
+            *) echo "::error::No pinned Trivy build for $RUNNER_OS/$RUNNER_ARCH" && exit 1 ;;
+          esac
+          archive="$RUNNER_TEMP/trivy.tar.gz"
+          curl -fsSL --retry 3 -o "$archive" \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_${asset}.tar.gz"
+          echo "$sha256  $archive" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/trivy"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/trivy" trivy
+          echo "$RUNNER_TEMP/trivy" >> "$GITHUB_PATH"
+      - name: Scan image vulnerabilities
+        id: scan
+        env:
+          IMAGE_NAME: ${{ matrix.image.name }}
+        # Findings are reported, not enforced. Only execution errors fail.
+        run: |
+          trivy image --scanners vuln --pkg-types os,library \
+            --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL --exit-code 0 --timeout 10m \
+            --format json --output "trivy-${IMAGE_NAME}.json" "container-security:${IMAGE_NAME}"
+          trivy convert --format sarif --output "trivy-${IMAGE_NAME}.sarif" "trivy-${IMAGE_NAME}.json"
+      - name: Upload vulnerability reports
+        if: ${{ !cancelled() && steps.scan.outcome == 'success' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: container-vulnerabilities-${{ matrix.image.name }}
+          path: |
+            trivy-${{ matrix.image.name }}.json
+            trivy-${{ matrix.image.name }}.sarif
+          if-no-files-found: error
+          retention-days: 30
+
+  report:
+    name: Report findings
+    needs: [plan, scan]
+    if: ${{ !cancelled() && needs.scan.result == 'success' }}
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: 10
+    # One report update per repository at a time. Callers should not cancel
+    # in-progress runs either; the reporter recovers, but only on the next run.
+    concurrency:
+      group: container-security-report-${{ github.repository }}
+      cancel-in-progress: false
+    outputs:
+      resolved: ${{ steps.local.outputs.resolved || steps.report.outputs.resolved }}
+    env:
+      PUBLISH: ${{ inputs.openPullRequest && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+    steps:
+      - name: Set up node environment
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Download image reports
+        uses: actions/download-artifact@v8
+        with:
+          pattern: container-vulnerabilities-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/container-reports
+      # Without a findings PR, the run summary is the report.
+      - name: Summarize findings
+        id: local
+        if: env.PUBLISH != 'true'
+        uses: parcelLab/ci/.github/actions/container-security-report@v9
+        with:
+          mode: summary
+          imageTargets: ${{ needs.plan.outputs.targets }}
+          reportDir: ${{ runner.temp }}/container-reports
+      - name: Publish findings report
+        id: report
+        if: env.PUBLISH == 'true'
+        uses: parcelLab/ci/.github/actions/container-security-report@v9
+        with:
+          mode: prepare
+          imageTargets: ${{ needs.plan.outputs.targets }}
+          reportDir: ${{ runner.temp }}/container-reports
+      # Runs even when publication was skipped, to retry a failed ready transition.
+      # Reviewers come from the caller's CODEOWNERS when the PR opens or becomes ready.
+      - name: Ensure findings PR is ready for review
+        if: env.PUBLISH == 'true' && steps.report.outputs.resolved == 'false'
+        uses: parcelLab/ci/.github/actions/container-security-report@v9
+        with:
+          mode: ensure-ready
+          imageTargets: ${{ needs.plan.outputs.targets }}
+          reportDir: ${{ runner.temp }}/container-reports
+      - name: Record clean scan and close resolved findings PR
+        if: env.PUBLISH == 'true' && steps.report.outputs.resolved == 'true'
+        uses: parcelLab/ci/.github/actions/container-security-report@v9
+        with:
+          mode: close-resolved
+          imageTargets: ${{ needs.plan.outputs.targets }}
+          reportDir: ${{ runner.temp }}/container-reports
