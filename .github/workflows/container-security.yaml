@@ -62,13 +62,13 @@ jobs:
             echo "::error::Findings would be public in this repository. Set allowPublicRepository to run anyway."
             exit 1
           fi
-          images=$(jq -ce '
+          resolved=$(jq -ce '
             def or_default($d): if . == null or . == "" then $d else . end;
             map({name: (.name | or_default(env.REPOSITORY)), file: (.file | or_default("Containerfile")), context: (.context | or_default(".")), target: (.target // "")})
             | if length > 0 and all(.[]; .name | type == "string" and test("^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")) and (map(.name) | unique | length) == length
               then . else error("images must be a non-empty array with unique, safe names") end' <<<"$IMAGES")
-          echo "images=$images" >> "$GITHUB_OUTPUT"
-          echo "targets=$(jq -r 'map(.name) | join(",")' <<<"$images")" >> "$GITHUB_OUTPUT"
+          echo "images=$resolved" >> "$GITHUB_OUTPUT"
+          echo "targets=$(jq -r 'map(.name) | join(",")' <<<"$resolved")" >> "$GITHUB_OUTPUT"
 
   scan:
     name: Scan ${{ matrix.image.name }}
