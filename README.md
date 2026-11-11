@@ -16,6 +16,31 @@ the release tag or commit in `.chart/prod/values.yaml` (at the `prod` tag with `
 with fresh base images and no cache. It deploys as `rebuild-<run-id>.<attempt>-<release>` and is skipped
 if another release reaches production first.
 
+## Bypass audit
+
+`bypass-audit.yaml` opens a Jira COM ticket when a push to the default branch skipped review or
+required checks: a PR merged without an approval from someone other than the author or with red
+required checks, a direct push, a force push, or a bot push that changes files outside
+`allowedBotPushes`. The ticket is assigned to the PR author, then the merger, then the human who
+triggered the bot's workflow run, else the security owner. Re-runs don't create duplicates.
+
+```yaml
+name: Bypass audit
+on:
+  push:
+    branches: [main]
+jobs:
+  bypass-audit:
+    uses: parcelLab/ci/.github/workflows/bypass-audit.yaml@v9
+    with:
+      appClientId: ${{ vars.BYPASS_AUDIT_APP_CLIENT_ID }}
+      allowedBotPushes: |
+        .chart/*/values*.yaml
+    secrets:
+      jiraToken: ${{ secrets.JIRA_GITHUB_CI_AUTOMATION }}
+      appPrivateKey: ${{ secrets.BYPASS_AUDIT_APP_PRIVATE_KEY }}
+```
+
 ## Contributing
 
 [Contribution guidelines](CONTRIBUTING.md)

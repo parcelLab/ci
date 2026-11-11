@@ -1,0 +1,100 @@
+name: Reusable Bypass Audit
+# Opens a COM ticket when a push to the default branch skipped review or required checks:
+# a PR merged without approval or with red required checks, a direct push, a force push, or a
+# bot push that changes files outside allowedBotPushes (INF-4421). Call it on push to the
+# default branch. Logic and tests: scripts/bypass_audit.py, scripts/test_bypass_audit.py.
+on:
+  workflow_call:
+    inputs:
+      runner:
+        required: false
+        description: Runner type
+        default: ubuntu-latest
+        type: string
+      timeoutMinutes:
+        required: false
+        description: Maximum minutes before the job is cancelled
+        default: 10
+        type: number
+      appClientId:
+        required: true
+        description: Client ID of the bypass-audit GitHub App (org variable BYPASS_AUDIT_APP_CLIENT_ID)
+        type: string
+      allowedBotPushes:
+        required: false
+        description: >-
+          Newline-separated glob patterns for files parcellab-dev-bot (or another bot) may change in a
+          direct push. A bot push is skipped only if all its files match. An empty commit is skipped
+          only if the list contains <empty>. "*" also matches "/".
+        default: ""
+        type: string
+      fallbackAssigneeEmail:
+        required: false
+        description: Assignee when no responsible human can be determined (security owner)
+        default: stefan.gersmann@parcellab.com
+        type: string
+      jiraEmail:
+        required: false
+        description: Email of the Jira account that owns jiraToken
+        default: bot@parcellab.com
+        type: string
+      jiraBaseUrl:
+        required: false
+        description: Jira API base URL (scoped tokens go through api.atlassian.com)
+        default: https://api.atlassian.com/ex/jira/c9698bf1-4f34-478e-af5c-c904cf9936dc
+        type: string
+      ciRef:
+        required: false
+        description: Ref of parcelLab/ci to load the script from; keep it in line with the @ref of the uses line
+        default: v9
+        type: string
+      dryRun:
+        required: false
+        description: Print the ticket that would be created, without calling Jira
+        default: false
+        type: boolean
+    secrets:
+      jiraToken:
+        required: true
+        description: Scoped Jira API token (org secret JIRA_GITHUB_CI_AUTOMATION)
+      appPrivateKey:
+        required: true
+        description: Private key of the bypass-audit GitHub App (org secret BYPASS_AUDIT_APP_PRIVATE_KEY)
+permissions:
+  contents: read
+jobs:
+  bypass-audit:
+    if: github.event_name == 'push' && github.ref_name == github.event.repository.default_branch
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeoutMinutes }}
+    steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ inputs.appClientId }}
+          private-key: ${{ secrets.appPrivateKey }}
+          owner: parcelLab
+          repositories: ${{ github.event.repository.name }},infrastructure
+
+      - name: Checkout the bypass audit script
+        uses: actions/checkout@v7
+        with:
+          repository: parcelLab/ci
+          ref: ${{ inputs.ciRef }}
+          sparse-checkout: scripts
+          path: .bypass-audit
+
+      - name: Audit the push
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          ALLOWED_BOT_PUSHES: ${{ inputs.allowedBotPushes }}
+          FALLBACK_ASSIGNEE_EMAIL: ${{ inputs.fallbackAssigneeEmail }}
+          JIRA_BASE_URL: ${{ inputs.jiraBaseUrl }}
+          JIRA_BROWSE_URL: https://parcellab.atlassian.net
+          JIRA_EMAIL: ${{ inputs.jiraEmail }}
+          JIRA_TOKEN: ${{ secrets.jiraToken }}
+          USERS_REPO: parcelLab/infrastructure
+          USERS_PATH: tf/users.yaml
+          DRY_RUN: ${{ inputs.dryRun }}
+        run: python3 .bypass-audit/scripts/bypass_audit.py

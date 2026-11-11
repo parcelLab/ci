@@ -23,6 +23,13 @@ jobs:
         run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.6.23
       - name: Run actionlint
         run: /home/runner/go/bin/actionlint
+  scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current git repository
+        uses: actions/checkout@v7
+      - name: Run script unit tests
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
   yamllint:
     # Local copy, not @v9: a PR must validate its own workflow changes.
     uses: ./.github/workflows/yaml.yaml
