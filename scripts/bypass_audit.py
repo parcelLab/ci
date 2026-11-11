@@ -237,7 +237,12 @@ def main():
          + f". Responsible: {login or 'not determined (fallback assignee)'}."],
         ["Please comment with a justification (e.g. incident, emergency fix, automation) and close this ticket."],
     ]
-    print(f"Bypass detected: {summary}\n  reasons: {reasons}\n  responsible GitHub login: {login}")
+    try:
+        email = email_for(login, load_users(gh)) if login else None
+    except Exception as e:  # any lookup failure -> fallback, never a missing ticket
+        print(f"::warning::users.yaml lookup for {login} failed ({e}); using the fallback.")
+        email = None
+    print(f"Bypass detected: {summary}\n  reasons: {reasons}\n  responsible: {login} <{email or 'fallback'}>")
     if dry_run:
         print("Dry run: no Jira calls, no ticket.")
         return
@@ -248,9 +253,9 @@ def main():
         return
     fallback = jira.account_id(os.environ["FALLBACK_ASSIGNEE_EMAIL"])
     try:
-        assignee = jira.account_id(email_for(login, load_users(gh))) if login else None
-    except Exception as e:  # any lookup failure -> fallback, never a missing ticket
-        print(f"::warning::Assignee lookup for {login} failed ({e}); using the fallback.")
+        assignee = jira.account_id(email)
+    except urllib.error.HTTPError as e:
+        print(f"::warning::Jira user lookup for {email} failed ({e.code}); using the fallback.")
         assignee = None
     fields = {"project": {"key": "COM"}, "issuetype": {"name": "Task"}, "summary": summary,
               "labels": ["bypass-merge", label], "description": adf(description),
