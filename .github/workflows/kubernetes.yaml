@@ -177,7 +177,7 @@ jobs:
       - name: Require an environment tag for staging configuration overrides
         if: (github.event.deployment.payload.env || inputs.env) == 'staging' && inputs.stagingDeploymentRepoRef != ''
         env:
-          PUSH_TO_ENV_TAG: ${{ github.event.deployment.payload.pushToEnvTag || inputs.pushToEnvTag }}
+          PUSH_TO_ENV_TAG: ${{ format('{0}', github.event.deployment.payload.pushToEnvTag) == 'true' || inputs.pushToEnvTag }}
         run: |
           if [ "$PUSH_TO_ENV_TAG" != "true" ]; then
             echo "::error::stagingDeploymentRepoRef requires pushToEnvTag to avoid pushing branch configuration to main"
@@ -292,7 +292,7 @@ jobs:
           GIT_USER_NAME: parcellab-dev-bot
           ENV: ${{ github.event.deployment.payload.env || inputs.env }}
           VERSION: ${{ needs.initialize.outputs.version }}
-          PUSH_TO_ENV_TAG: ${{ github.event.deployment.payload.pushToEnvTag || inputs.pushToEnvTag }}
+          PUSH_TO_ENV_TAG: ${{ format('{0}', github.event.deployment.payload.pushToEnvTag) == 'true' || inputs.pushToEnvTag }}
       - if: success() && github.event_name == 'deployment'
         name: Successful ${{ github.event.deployment.payload.name || inputs.appName }} deployment
         uses: chrnorm/deployment-status@v2
