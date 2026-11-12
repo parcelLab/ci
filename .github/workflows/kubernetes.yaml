@@ -32,6 +32,11 @@ on:
         description: The repository within Github that holds the version file to deploy via GitOps
         default: parcelLab/deployment
         type: string
+      stagingDeploymentRepoRef:
+        required: false
+        description: Git ref or SHA for staging GitOps configuration (requires pushToEnvTag). Ignored outside staging; empty uses main.
+        default: ""
+        type: string
       imageTargets:
         required: false
         description: If provided, sets targets for as many image builds as targets specified. When bakeFile is provided, these are Docker Buildx Bake targets.
@@ -169,6 +174,15 @@ jobs:
       channel-id: ${{ steps.vars.outputs.channel-id }}
       version: ${{ steps.vars.outputs.version }}
     steps:
+      - name: Require an environment tag for staging configuration overrides
+        if: (github.event.deployment.payload.env || inputs.env) == 'staging' && inputs.stagingDeploymentRepoRef != ''
+        env:
+          PUSH_TO_ENV_TAG: ${{ github.event.deployment.payload.pushToEnvTag || inputs.pushToEnvTag }}
+        run: |
+          if [ "$PUSH_TO_ENV_TAG" != "true" ]; then
+            echo "::error::stagingDeploymentRepoRef requires pushToEnvTag to avoid pushing branch configuration to main"
+            exit 1
+          fi
       - name: Check if 'env' input is provided
         run: |
           DEPLOY_ENV="${{ github.event.deployment.payload.env || inputs.env }}"
@@ -247,7 +261,7 @@ jobs:
           repository: ${{ inputs.deploymentRepoURL }}
           path: remote
           token: ${{ secrets.repoAccessToken }}
-          ref: ${{ github.event.deployment.payload.rebuild != null && (github.event.deployment.payload.pushToEnvTag == 'true' || inputs.pushToEnvTag) && 'refs/tags/prod' || 'main' }}
+          ref: ${{ (github.event.deployment.payload.env || inputs.env) == 'staging' && inputs.stagingDeploymentRepoRef || (github.event.deployment.payload.rebuild != null && (github.event.deployment.payload.pushToEnvTag == 'true' || inputs.pushToEnvTag) && 'refs/tags/prod' || 'main') }}
       - name: Refuse to replace a newer production release
         if: github.event.deployment.payload.rebuild != null
         uses: mikefarah/yq@v4.53.2

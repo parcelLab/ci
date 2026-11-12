@@ -16,6 +16,30 @@ the release tag or commit in `.chart/prod/values.yaml` (at the `prod` tag with `
 with fresh base images and no cache. It deploys as `rebuild-<run-id>.<attempt>-<release>` and is skipped
 if another release reaches production first.
 
+## Staging configuration from a feature branch
+
+`kubernetes.yaml` accepts `stagingDeploymentRepoRef` to select the GitOps configuration
+revision for staging. When the deployment repository is the application repository,
+pass the deployment SHA to use the chart and values from the same commit as the code:
+
+```yaml
+uses: parcelLab/ci/.github/workflows/kubernetes.yaml@v9
+with:
+  deploymentRepoURL: parcelLab/backend
+  deploymentRepoPath: .chart/${{ github.event.deployment.payload.env }}
+  stagingDeploymentRepoRef: ${{ github.event.deployment.sha }}
+```
+
+This requires `pushToEnvTag: true` in the deployment payload or Kubernetes workflow
+inputs. The workflow updates the image version on top of the selected revision and
+pushes the `staging` tag, which ArgoCD must track. It fails before building if tag
+publishing is disabled, to prevent pushing feature branch configuration to `main`.
+The ref must exist in `deploymentRepoURL`; it does not select a revision in a
+separate infrastructure repository or change the application build revision.
+
+An empty ref keeps staging configuration on `main`. The input is ignored for all
+other environments, including production and weekly production rebuilds.
+
 ## Contributing
 
 [Contribution guidelines](CONTRIBUTING.md)
