@@ -329,17 +329,18 @@ jobs:
           for target_config in "${TARGET_CONFIGS[@]}"; do
             bake_target=$(jq -r 'if type == "object" then .target else . end' <<< "$target_config")
             image_target=$(jq -r 'if type == "object" then (.imageTarget // .target) else . end' <<< "$target_config")
-            image_repository="$REGISTRY/$APP_NAME-$image_target"
+            repository_name="$APP_NAME${image_target:+-$image_target}"
+            image_repository="$REGISTRY/$repository_name"
 
-            if ! aws ecr describe-repositories --repository-names "$APP_NAME-$image_target" 2>/dev/null; then
-              echo "Repository $APP_NAME-$image_target does not exist, creating it..."
-              aws ecr create-repository --repository-name "$APP_NAME-$image_target"
+            if ! aws ecr describe-repositories --repository-names "$repository_name" 2>/dev/null; then
+              echo "Repository $repository_name does not exist, creating it..."
+              aws ecr create-repository --repository-name "$repository_name"
             else
-              echo "Repository $APP_NAME-$image_target already exists, skipping creation"
+              echo "Repository $repository_name already exists, skipping creation"
             fi
 
-            echo "Applying lifecycle policy for $APP_NAME-$image_target"
-            aws ecr put-lifecycle-policy --repository-name "$APP_NAME-$image_target" --lifecycle-policy-text "$LIFECYCLE_POLICY"
+            echo "Applying lifecycle policy for $repository_name"
+            aws ecr put-lifecycle-policy --repository-name "$repository_name" --lifecycle-policy-text "$LIFECYCLE_POLICY"
 
             BAKE_ARGS+=(
               --set "$bake_target.args.APP_NAME=$APP_NAME"
