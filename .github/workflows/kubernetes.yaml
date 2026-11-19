@@ -327,7 +327,7 @@ jobs:
         with:
           environment: ${{ inputs.sentryEnvironment != '' && inputs.sentryEnvironment || github.event.deployment.payload.env || inputs.env }}
           set_commits: skip
-          version: ${{ needs.initialize.outputs.version }}
+          release: ${{ needs.initialize.outputs.version }}
         continue-on-error: true
       - name: Clean up images
         uses: actions/delete-package-versions@v5
