@@ -1,0 +1,42 @@
+name: Container security report
+description: >-
+  Render Trivy image reports into a findings report and keep the findings PR in
+  step: ready for review while HIGH/CRITICAL findings remain, closed once clean.
+inputs:
+  mode:
+    description: summary (run summary only), prepare (commit the report and open or update the PR), ensure-ready or close-resolved
+    required: true
+  imageTargets:
+    description: Comma or newline separated image names, matching trivy-<name>.json in reportDir
+    required: true
+  reportDir:
+    description: Directory containing trivy-<name>.json reports
+    required: true
+outputs:
+  resolved:
+    description: "true when no HIGH/CRITICAL findings remain"
+    value: ${{ steps.report.outputs.resolved }}
+runs:
+  using: composite
+  steps:
+    - name: Run report
+      id: report
+      shell: bash
+      env:
+        MODE: ${{ inputs.mode }}
+        IMAGE_TARGETS: ${{ inputs.imageTargets }}
+        REPORT_DIR: ${{ inputs.reportDir }}
+        TOKEN: ${{ github.token }}
+        BASE_BRANCH: ${{ github.event.repository.default_branch }}
+        SCAN_SHA: ${{ github.sha }}
+      run: |
+        token="$TOKEN"
+        unset TOKEN
+        report="$GITHUB_ACTION_PATH/report.mjs"
+        # Only the modes that call the GitHub API get the token.
+        case "$MODE" in
+          summary) node "$report" --local "$REPORT_DIR" >>"$GITHUB_STEP_SUMMARY" ;;
+          prepare) GH_TOKEN="$token" node "$report" ;;
+          ensure-ready | close-resolved) GH_TOKEN="$token" node "$report" "--$MODE" ;;
+          *) echo "::error::Unknown mode: $MODE" && exit 1 ;;
+        esac
